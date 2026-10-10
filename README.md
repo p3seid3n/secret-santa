@@ -24,7 +24,7 @@ take part yourself.
 **Your guests**
 
 1. Open the link and start typing their name. The page suggests matching names.
-2. Confirm "Yes, that is me".
+2. Confirm "Yes, that is me". People who have a personal code are asked for it next.
 3. See who they give a gift to, then press "I am done" so the screen is hidden again.
 4. The host page also has **Shuffle again**: it draws new pairings for the same event.
    The link and everybody's wishlists stay; the rules you set are reused. (Anyone who
@@ -66,9 +66,15 @@ Node 20 or newer, nothing to install.
 
 ## Good to know
 
-- **Honor system:** anyone who has the link can type any name from the list, see that
-  person's recipient and edit that person's wishlist. That matches how a family Secret Santa
-  works, so only send the link to people taking part.
+- **Personal codes (optional):** on the host page you can give each person a code (4 to 12
+  characters, or press *Make codes for everyone*) and leave it empty for people who should
+  not need one, such as grandparents. Anyone with a code must type it to see their person or
+  edit their wishlist. Codes ignore capitals, accents and spaces, are stored hashed on the
+  server, and after 5 wrong tries that person is locked for 15 minutes. You can change codes
+  later with *Save codes* without drawing again. The codes you type are kept in your own
+  browser on the host page so you can read them out to people.
+- **People without a code** work on the honor system: anyone with the link can pick their
+  name. Wishlists are readable by everyone who has the link, with or without a code.
 - **Pairings stay on the server.** The browser only receives the recipient of the one person
   who confirmed their name. The link contains only a random event number.
 - **Wishlists are public to the group.** Older wishlists that had a separate link list are

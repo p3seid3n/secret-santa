@@ -12,13 +12,14 @@
   var t = I18n.t;
   var $ = function (id) { return document.getElementById(id); };
 
-  var SCREENS = ["loading", "offline", "name", "confirm", "result", "people", "person", "mine", "error"];
+  var SCREENS = ["loading", "offline", "name", "confirm", "code", "result", "people", "person", "mine", "error"];
 
   var eventId = "";
   var names = [];
   var me = -1;              // the person using the page right now
   var pending = -1;         // the person waiting for "Yes, that is me"
   var recipientIndex = -1;  // who "me" gives a gift to
+  var myCode = "";          // personal code, only for people who have one
   var people = [];          // everybody's wishlist, as last loaded from the server
   var wishNotes = "";       // my own wishlist text while editing
   var currentScreen = "";
@@ -152,16 +153,58 @@
 
   /* ------------------------------------------------- 2. Is this you? */
 
-  function onConfirmYes() {
-    me = pending;
+  // Asks the server who "me" gives to. People with a personal code are asked for it first.
+  function reveal() {
     run(function () {
-      return Api.call("reveal", { id: eventId, index: me }).then(function (answer) {
-        if (!answer.ok) throw problem(answer);
+      return Api.call("reveal", { id: eventId, index: me, code: myCode }).then(function (answer) {
+        if (!answer.ok) {
+          if (answer.error === "code_required") {
+            show("code", false);
+            $("code-input").focus();
+            return;
+          }
+          if (answer.error === "bad_code" || answer.error === "locked") {
+            myCode = "";
+            $("code-input").value = "";
+            show("code", false);
+            if (answer.error === "locked") setMessage($("code-msg"), "code_locked", { minutes: answer.minutes || 15 });
+            else setMessage($("code-msg"), "code_wrong");
+            $("code-input").focus();
+            return;
+          }
+          throw problem(answer);
+        }
         recipientIndex = answer.recipientIndex;
+        $("code-input").value = "";
+        clearMessage($("code-msg"));
         renderResult();
         show("result");
       });
     });
+  }
+
+  function onConfirmYes() {
+    me = pending;
+    myCode = "";
+    clearMessage($("code-msg"));
+    reveal();
+  }
+
+  function onCodeSubmit(event) {
+    event.preventDefault();
+    var code = $("code-input").value.trim();
+    if (!code) return;
+    myCode = code;
+    clearMessage($("code-msg"));
+    reveal();
+  }
+
+  function onCodeBack() {
+    myCode = "";
+    $("code-input").value = "";
+    clearMessage($("code-msg"));
+    pending = -1;
+    show("name", true);
   }
 
   function onConfirmNo() {
@@ -181,6 +224,7 @@
     me = -1;
     pending = -1;
     recipientIndex = -1;
+    myCode = "";
     people = [];
     wishNotes = "";
     $("name-input").value = "";
@@ -291,7 +335,7 @@
   function queueSave() {
     clearTimeout(saveTimer);
     saveTimer = null;
-    pendingSave = { index: me, notes: wishNotes };
+    pendingSave = { index: me, notes: wishNotes, code: myCode };
     setStatus("status_saving");
     pump();
   }
@@ -301,7 +345,7 @@
     var job = pendingSave;
     pendingSave = null;
     sending = true;
-    Api.call("save", { id: eventId, index: job.index, notes: job.notes, links: [] }).then(function (answer) {
+    Api.call("save", { id: eventId, index: job.index, notes: job.notes, links: [], code: job.code }).then(function (answer) {
       sending = false;
       if (!answer.ok) {
         setStatus("status_save_error");
@@ -355,7 +399,7 @@
   /* ------------------------------------------------------------- Language */
 
   function onLanguageChanged() {
-    ["name-msg", "save-status"].forEach(function (id) { retranslateMessage($(id)); });
+    ["name-msg", "code-msg", "save-status"].forEach(function (id) { retranslateMessage($(id)); });
     renderResult();
     if (currentScreen === "people") renderPeople();
     if (currentScreen === "person") renderPerson();
@@ -383,6 +427,8 @@
     });
     $("confirm-yes").addEventListener("click", onConfirmYes);
     $("confirm-no").addEventListener("click", onConfirmNo);
+    $("code-form").addEventListener("submit", onCodeSubmit);
+    $("code-back").addEventListener("click", onCodeBack);
     $("result-done").addEventListener("click", onDone);
     $("open-people").addEventListener("click", openPeople);
     $("open-mine").addEventListener("click", openMine);

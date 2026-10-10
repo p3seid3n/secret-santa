@@ -14,7 +14,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // names: the text box content. rules: [{a, b, both}]. link: last link created.
-  var state = { names: "", rules: [], link: "" };
+  var state = { names: "", rules: [], link: "", codes: {} };
 
   /* -------------------------------------------------------------- Storage */
 
@@ -29,6 +29,11 @@
           .map(function (r) { return { a: r.a, b: r.b, both: !!r.both }; });
       }
       if (typeof saved.link === "string") state.link = saved.link;
+      if (saved.codes && typeof saved.codes === "object") {
+        Object.keys(saved.codes).forEach(function (name) {
+          if (typeof saved.codes[name] === "string") state.codes[name] = saved.codes[name];
+        });
+      }
     } catch (e) { /* storage not available: the page still works */ }
   }
 
@@ -95,7 +100,111 @@
     select.value = names.indexOf(previous) === -1 ? "" : previous;
   }
 
+  /* ------------------------------------------------------ Personal codes */
+
+  function normalizeCode(code) {
+    return Core.normalize(code).replace(/\s/g, "");
+  }
+
+  // Codes of the people who are in the list now (empty ones left out).
+  function currentCodes() {
+    var out = {};
+    currentNames().forEach(function (name) {
+      if (normalizeCode(state.codes[name] || "")) out[name] = state.codes[name];
+    });
+    return out;
+  }
+
+  function codesAreValid() {
+    var codes = currentCodes();
+    return Object.keys(codes).every(function (name) {
+      var n = normalizeCode(codes[name]).length;
+      return n >= 4 && n <= 12;
+    });
+  }
+
+  function renderCodes() {
+    var box = $("code-list");
+    box.textContent = "";
+    currentNames().forEach(function (name, index) {
+      var row = document.createElement("div");
+      row.className = "code-row";
+      var label = document.createElement("label");
+      label.setAttribute("for", "code-" + index);
+      label.textContent = name;
+      var input = document.createElement("input");
+      input.type = "text";
+      input.id = "code-" + index;
+      input.maxLength = 12;
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      input.setAttribute("aria-label", t("code_for", { name: name }));
+      input.value = state.codes[name] || "";
+      input.addEventListener("input", function () {
+        state.codes[name] = input.value;
+        saveState();
+      });
+      row.appendChild(label);
+      row.appendChild(input);
+      box.appendChild(row);
+    });
+  }
+
+  function randomCode() {
+    var a = new Uint32Array(1);
+    window.crypto.getRandomValues(a);
+    return String(1000 + (a[0] % 9000));
+  }
+
+  function onMakeCodes() {
+    var used = {};
+    currentNames().forEach(function (name) {
+      var code;
+      do { code = randomCode(); } while (used[code]);
+      used[code] = true;
+      state.codes[name] = code;
+    });
+    saveState();
+    renderCodes();
+  }
+
+  function onClearCodes() {
+    state.codes = {};
+    saveState();
+    renderCodes();
+  }
+
+  function eventIdFromLink() {
+    var match = /[#&]e=([A-Za-z0-9_-]{8,40})/.exec(state.link.slice(Math.max(0, state.link.indexOf("#"))));
+    return match ? match[1] : "";
+  }
+
+  // Saves the codes for the event of the current link (the pairings do not change).
+  function onUpdateCodes() {
+    var message = $("codes-msg");
+    message.className = "msg error";
+    clearMessage(message);
+    var id = eventIdFromLink();
+    if (!id) return;
+    if (!codesAreValid()) { setMessage(message, "draw_code_short"); return; }
+    var password = $("host-password").value;
+    if (!password) { setMessage(message, "draw_password_empty"); return; }
+
+    var button = $("update-codes");
+    button.disabled = true;
+    Api.call("setcodes", { password: password, id: id, codes: currentCodes() }).then(function (answer) {
+      button.disabled = false;
+      if (!answer.ok) { showDrawError(message, answer); return; }
+      message.className = "msg ok";
+      setMessage(message, "codes_saved");
+    }, function () {
+      button.disabled = false;
+      setMessage(message, "draw_offline");
+    });
+  }
+
   function refreshNameDependentParts() {
+    renderCodes();
     updateNamesInfo();
     var names = currentNames();
     fillSelect($("rule-a"), names);
@@ -192,6 +301,7 @@
     $("open-link").href = link;
     clearMessage($("copy-msg"));
     clearMessage($("reshuffle-msg"));
+    clearMessage($("codes-msg"));
     $("result").hidden = false;
   }
 
@@ -215,6 +325,7 @@
       case "impossible": return setMessage(message, "draw_impossible", hintsText(answer.hints));
       case "duplicates": return setMessage(message, "draw_dupes", { names: (answer.names || []).join(", ") });
       case "too_few": return setMessage(message, "draw_few");
+      case "bad_code_format": return setMessage(message, "draw_code_short");
       case "bad_rule": return setMessage(message, "draw_broken_rule");
       default: return setMessage(message, "draw_error");
     }
@@ -245,6 +356,11 @@
       return;
     }
 
+    if (!codesAreValid()) {
+      setMessage(message, "draw_code_short");
+      return;
+    }
+
     var password = $("host-password").value;
     if (!password) {
       setMessage(message, "draw_password_empty");
@@ -261,7 +377,7 @@
     setMessage(message, "draw_working");
 
     // The draw happens on the server, so this page never sees who gives to whom.
-    Api.call("create", { password: password, names: names, rules: state.rules }).then(function (answer) {
+    Api.call("create", { password: password, names: names, rules: state.rules, codes: currentCodes() }).then(function (answer) {
       button.disabled = false;
       if (!answer.ok) {
         showDrawError(message, answer);
@@ -300,8 +416,8 @@
     message.className = "msg error";
     clearMessage(message);
 
-    var match = /[#&]e=([A-Za-z0-9_-]{8,40})/.exec(state.link.slice(state.link.indexOf("#")));
-    if (!match) return;
+    var id = eventIdFromLink();
+    if (!id) return;
     var password = $("host-password").value;
     if (!password) {
       setMessage(message, "draw_password_empty");
@@ -314,7 +430,7 @@
     message.className = "msg";
     setMessage(message, "draw_working");
 
-    Api.call("reshuffle", { password: password, id: match[1], rules: state.rules }).then(function (answer) {
+    Api.call("reshuffle", { password: password, id: id, rules: state.rules }).then(function (answer) {
       button.disabled = false;
       if (!answer.ok) {
         showDrawError(message, answer);
@@ -332,7 +448,7 @@
 
   function onReset() {
     if (!window.confirm(t("reset_confirm"))) return;
-    state = { names: "", rules: [], link: "" };
+    state = { names: "", rules: [], link: "", codes: {} };
     saveState();
     $("names").value = "";
     $("result").hidden = true;
@@ -346,7 +462,7 @@
 
   function onLanguageChanged() {
     refreshNameDependentParts();
-    ["rule-msg", "draw-msg", "copy-msg", "reshuffle-msg"].forEach(function (id) { renderMessage($(id)); });
+    ["rule-msg", "draw-msg", "copy-msg", "reshuffle-msg", "codes-msg"].forEach(function (id) { renderMessage($(id)); });
   }
 
   /* ----------------------------------------------------------------- Start */
@@ -363,6 +479,9 @@
     $("copy-link").addEventListener("click", onCopyLink);
     $("link-out").addEventListener("focus", function () { this.select(); });
     $("reshuffle").addEventListener("click", onReshuffle);
+    $("make-codes").addEventListener("click", onMakeCodes);
+    $("clear-codes").addEventListener("click", onClearCodes);
+    $("update-codes").addEventListener("click", onUpdateCodes);
     $("reset").addEventListener("click", onReset);
     refreshNameDependentParts();
     if (state.link) showLink(state.link);

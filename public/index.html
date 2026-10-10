@@ -54,6 +54,19 @@
     <button class="btn tonal" id="confirm-no" type="button" data-i18n="confirm_no">No, volver</button>
   </section>
 
+  <!-- 2b. Personal code (only for people who have one) -->
+  <section id="screen-code" hidden>
+    <h1 tabindex="-1" data-i18n="code_title">Tu código</h1>
+    <form id="code-form" autocomplete="off" novalidate>
+      <label for="code-input" class="sr-only" data-i18n="code_title">Tu código</label>
+      <input id="code-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off"
+             spellcheck="false" enterkeyhint="go" maxlength="12" aria-describedby="code-msg">
+      <p id="code-msg" class="msg error" role="alert" hidden></p>
+      <button class="btn" type="submit" data-i18n="next">Siguiente</button>
+      <button class="btn text" id="code-back" type="button" data-i18n="back">Volver</button>
+    </form>
+  </section>
+
   <!-- 3. Your Secret Santa result -->
   <section id="screen-result" hidden>
     <h1 tabindex="-1" id="result-title"></h1>

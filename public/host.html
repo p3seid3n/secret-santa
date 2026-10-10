@@ -41,6 +41,12 @@
   <button class="btn tonal" id="add-rule" type="button" data-i18n="rule_add">Añadir esta regla</button>
   <ul id="rule-list" class="list"></ul>
 
+  <h2 id="h-codes" data-i18n="h_codes">3. Códigos (opcional)</h2>
+  <p class="hint" data-i18n="codes_hint">Quien tiene código lo escribe junto a su nombre. Déjalo vacío para quien no lo necesite.</p>
+  <div id="code-list"></div>
+  <button class="btn tonal" id="make-codes" type="button" data-i18n="codes_make">Crear códigos para todos</button>
+  <button class="btn text" id="clear-codes" type="button" data-i18n="codes_clear">Quitar todos</button>
+
   <h2 id="h-draw" data-i18n="h_draw">3. Sorteo</h2>
   <label for="host-password" data-i18n="host_password_label">Contraseña del organizador</label>
   <input id="host-password" type="password" autocomplete="current-password">
@@ -55,6 +61,8 @@
     <button class="btn" id="copy-link" type="button" data-i18n="copy_link">Copiar enlace</button>
     <a class="btn tonal" id="open-link" href="#" target="_blank" rel="noopener" data-i18n="open_guest">Abrir la página de los invitados</a>
     <p id="copy-msg" class="msg" role="status" hidden></p>
+    <button class="btn tonal" id="update-codes" type="button" data-i18n="codes_update">Guardar códigos</button>
+    <p id="codes-msg" class="msg" role="status" hidden></p>
     <button class="btn tonal" id="reshuffle" type="button" data-i18n="reshuffle_btn">Mezclar de nuevo</button>
     <p id="reshuffle-msg" class="msg" role="status" hidden></p>
     <p class="hint" data-i18n="draw_again_hint">Si sorteas otra vez se crea un enlace nuevo. Envía solo el más reciente.</p>

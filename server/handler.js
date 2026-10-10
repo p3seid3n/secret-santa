@@ -6,12 +6,13 @@
  * Every request is a POST with a JSON body { action, ... }:
  *
  *   create     host only (password)   draw on the server, returns the event id
+ *   setcodes   host only (password)   set or change the personal codes
  *   reshuffle  host only (password)   draw again for the same event (same link, wishlists stay)
  *   names      anyone with the id     list of names (for autocomplete)
- *   reveal     anyone with the id     who does <index> give a gift to?
+ *   reveal     the id (+ code if set) who does <index> give a gift to?
  *   wishlists  anyone with the id     everybody's wishlist (notes and links)
  *   preview    anyone with the id     title, description and picture of a web page
- *   save       anyone with the id     save the wishlist of <index>
+ *   save       the id (+ code if set) save the wishlist of <index>
  *
  * The pairings never leave the server except one at a time, in "reveal".
  */
@@ -26,7 +27,13 @@ const MAX_NAME_LENGTH = 60;
 const MAX_RULES = 300;
 const ID_PATTERN = /^[A-Za-z0-9_-]{8,40}$/;
 
+const CODE_MIN = 4;
+const CODE_MAX = 12;
+const MAX_FAILS = 5;            // wrong codes in a row ...
+const LOCK_MINUTES = 15;        // ... lock that person for this long
+
 const eventKey = (id) => "santa:event:" + id;
+const lockKey = (id, index) => "santa:lock:" + id + ":" + index;
 const wishKey = (id, index) => "santa:wish:" + id + ":" + index;
 
 function reply(status, body) {
@@ -88,6 +95,69 @@ function rulesToPairs(names, rules) {
   return forbidden;
 }
 
+/* ------------------------------------------------------------ personal codes */
+
+// Codes ignore capital letters, accents and spaces: "Ab 12" = "ab12".
+function normalizeCode(code) {
+  return Core.normalize(code).replace(/\s/g, "");
+}
+
+function hashCode(code) {
+  const salt = crypto.randomBytes(8).toString("hex");
+  return { salt, hash: crypto.scryptSync(code, salt, 32).toString("hex") };
+}
+
+function codeMatches(code, record) {
+  const given = crypto.scryptSync(code, record.salt, 32);
+  const expected = Buffer.from(record.hash, "hex");
+  return given.length === expected.length && crypto.timingSafeEqual(given, expected);
+}
+
+// {name: code} -> array lined up with names (null = no code), or null if a code is unusable.
+function buildCodes(names, raw) {
+  if (raw === undefined || raw === null) return { codes: undefined };
+  if (typeof raw !== "object" || Array.isArray(raw)) return { codes: null };
+  const list = names.map(() => null);
+  for (const name of Object.keys(raw)) {
+    const index = names.indexOf(name);
+    if (index === -1 || typeof raw[name] !== "string") return { codes: null };
+    const code = normalizeCode(raw[name]);
+    if (!code) continue;
+    if (code.length < CODE_MIN || code.length > CODE_MAX) return { codes: null };
+    list[index] = hashCode(code);
+  }
+  return { codes: list.some(Boolean) ? list : undefined };
+}
+
+// null when the person has no code or the right one was given, otherwise a failure reply.
+// Too many wrong codes lock that person for a while (nobody can guess a short code).
+async function checkCode(event, body, deps) {
+  const record = event.codes && event.codes[body.index];
+  if (!record) return null;
+  const now = (deps.now || Date.now)();
+  const key = lockKey(body.id, body.index);
+  const lock = parseJson(await deps.store.get(key)) || { fails: 0, until: 0 };
+  if (lock.until > now) return fail(429, "locked", { minutes: Math.ceil((lock.until - now) / 60000) });
+
+  const given = typeof body.code === "string" ? normalizeCode(body.code) : "";
+  if (!given) return fail(401, "code_required");
+  if (given.length <= CODE_MAX && codeMatches(given, record)) {
+    if (lock.fails) await deps.store.set(key, JSON.stringify({ fails: 0, until: 0 }));
+    return null;
+  }
+
+  await (deps.delay || sleep)(400);
+  lock.fails += 1;
+  let locked = false;
+  if (lock.fails >= MAX_FAILS) {
+    lock.fails = 0;
+    lock.until = now + LOCK_MINUTES * 60000;
+    locked = true;
+  }
+  await deps.store.set(key, JSON.stringify(lock));
+  return locked ? fail(429, "locked", { minutes: LOCK_MINUTES }) : fail(401, "bad_code");
+}
+
 /* ------------------------------------------------------------------ create */
 
 async function create(body, deps) {
@@ -110,6 +180,9 @@ async function create(body, deps) {
   const forbidden = rulesToPairs(names, rules);
   if (!forbidden) return fail(400, "bad_rule");
 
+  const built = buildCodes(names, body.codes);
+  if (built.codes === null) return fail(400, "bad_code_format");
+
   const result = Core.draw(names, forbidden);
   if (!result.ok) {
     return fail(422, "impossible", { hints: Core.explainImpossible(names, forbidden) });
@@ -120,8 +193,28 @@ async function create(body, deps) {
 
   const id = crypto.randomBytes(9).toString("base64url");
   const event = { v: 1, names, forbidden, assignment: result.assignment, createdAt: new Date().toISOString() };
+  if (built.codes) event.codes = built.codes;
   await deps.store.set(eventKey(id), JSON.stringify(event));
   return reply(200, { ok: true, id });
+}
+
+/* ---------------------------------------------------------------- setcodes */
+
+// Replaces all personal codes of an event ({} removes them all). Pairings stay as they are.
+async function setcodes(body, deps) {
+  const denied = await checkHost(body, deps);
+  if (denied) return denied;
+  const event = await loadEvent(deps.store, body.id);
+  if (!event) return fail(404, "not_found");
+
+  const built = buildCodes(event.names, body.codes === undefined ? {} : body.codes);
+  if (built.codes === null) return fail(400, "bad_code_format");
+  const updated = Object.assign({}, event);
+  if (built.codes) updated.codes = built.codes; else delete updated.codes;
+  await deps.store.set(eventKey(body.id), JSON.stringify(updated));
+  // New codes start with a clean slate: nobody stays locked out.
+  await Promise.all(event.names.map((_, i) => deps.store.set(lockKey(body.id, i), JSON.stringify({ fails: 0, until: 0 }))));
+  return reply(200, { ok: true });
 }
 
 /* --------------------------------------------------------------- reshuffle */
@@ -175,6 +268,8 @@ async function reveal(body, deps) {
   const event = await loadEvent(deps.store, body.id);
   if (!event) return fail(404, "not_found");
   if (!validIndex(event, body.index)) return fail(400, "bad_request");
+  const refused = await checkCode(event, body, deps);
+  if (refused) return refused;
   const recipient = event.assignment[body.index];
   return reply(200, { ok: true, recipientIndex: recipient, recipient: event.names[recipient] });
 }
@@ -195,6 +290,8 @@ async function save(body, deps) {
   const event = await loadEvent(deps.store, body.id);
   if (!event) return fail(404, "not_found");
   if (!validIndex(event, body.index)) return fail(400, "bad_request");
+  const refused = await checkCode(event, body, deps);
+  if (refused) return refused;
   const wish = Core.sanitizeWish(body);
   await deps.store.set(
     wishKey(body.id, body.index),
@@ -226,7 +323,7 @@ async function preview(body, deps) {
 
 /* -------------------------------------------------------------------- main */
 
-const ACTIONS = { create, reshuffle, names, reveal, wishlists, save, preview };
+const ACTIONS = { create, reshuffle, setcodes, names, reveal, wishlists, save, preview };
 
 async function handle(request, deps) {
   if (request.method !== "POST") return fail(405, "method");

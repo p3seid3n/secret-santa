@@ -76,6 +76,82 @@ test("reshuffle of an older event takes the rules from the request", async () =>
   assert.notStrictEqual((await pairings(deps, id))["Ana Müller"], "Peter Meier");
 });
 
+test("personal codes: only people with a code are asked, wrong codes are refused and lock after 5 tries", async () => {
+  let now = 1000000;
+  const deps = makeDeps({ now: () => now });
+  const id = await createEvent(deps, { codes: { "Ana Müller": "Ab 12", "Peter Meier": "7777" } });
+  const ana = NAMES.indexOf("Ana Müller");
+
+  // people without a code work as before
+  assert.strictEqual((await call(deps, { action: "reveal", id, index: 2 })).status, 200);
+  assert.strictEqual((await call(deps, { action: "save", id, index: 2, notes: "x" })).status, 200);
+
+  // with a code
+  const none = await call(deps, { action: "reveal", id, index: ana });
+  assert.deepStrictEqual([none.status, none.body.error], [401, "code_required"]);
+  assert.ok(!JSON.stringify(none.body).includes("recipient"));
+  const saveNone = await call(deps, { action: "save", id, index: ana, notes: "hacked" });
+  assert.deepStrictEqual([saveNone.status, saveNone.body.error], [401, "code_required"]);
+  assert.strictEqual((await call(deps, { action: "wishlists", id })).body.people[ana].notes, "", "nothing was saved");
+  const ok = await call(deps, { action: "reveal", id, index: ana, code: "  AB12 " });
+  assert.strictEqual(ok.status, 200, "capitals and spaces do not matter");
+  assert.strictEqual((await call(deps, { action: "save", id, index: ana, notes: "mine", code: "ab12" })).status, 200);
+  assert.strictEqual((await call(deps, { action: "wishlists", id })).body.people[ana].notes, "mine");
+
+  // wrong codes: slowed down, then locked
+  for (let i = 1; i <= 4; i++) {
+    const bad = await call(deps, { action: "reveal", id, index: ana, code: "0000" });
+    assert.deepStrictEqual([bad.status, bad.body.error], [401, "bad_code"], "try " + i);
+  }
+  assert.ok(deps.delays.filter((d) => d === 400).length >= 4, "wrong codes are slowed down");
+  const locked = await call(deps, { action: "reveal", id, index: ana, code: "0000" });
+  assert.deepStrictEqual([locked.status, locked.body.error, locked.body.minutes], [429, "locked", 15]);
+  const rightButLocked = await call(deps, { action: "reveal", id, index: ana, code: "ab12" });
+  assert.strictEqual(rightButLocked.status, 429, "even the right code waits");
+  const otherPerson = await call(deps, { action: "reveal", id, index: NAMES.indexOf("Peter Meier"), code: "7777" });
+  assert.strictEqual(otherPerson.status, 200, "other people are not affected");
+  now += 16 * 60000;
+  assert.strictEqual((await call(deps, { action: "reveal", id, index: ana, code: "ab12" })).status, 200, "unlocked after the wait");
+});
+
+test("personal codes: format, hashing, setcodes and reshuffle", async () => {
+  const deps = makeDeps();
+  for (const bad of ["abc", "x".repeat(13)]) {
+    const res = await call(deps, { action: "create", password: ENV.HOST_PASSWORD, names: NAMES, rules: [], codes: { "Ana Müller": bad } });
+    assert.deepStrictEqual([res.status, res.body.error], [400, "bad_code_format"]);
+  }
+  const unknown = await call(deps, { action: "create", password: ENV.HOST_PASSWORD, names: NAMES, rules: [], codes: { Nobody: "1234" } });
+  assert.strictEqual(unknown.body.error, "bad_code_format");
+
+  const id = await createEvent(deps, { codes: { "Ana Müller": "4821", "Hannah Keller": "" } });
+  const stored = await deps.store.get("santa:event:" + id);
+  assert.ok(!stored.includes("4821"), "codes are stored hashed");
+  assert.strictEqual((await call(deps, { action: "reveal", id, index: 2 })).status, 200, "empty code means no code");
+
+  const wrong = await call(deps, { action: "setcodes", id, password: "nope", codes: {} });
+  assert.strictEqual(wrong.status, 401);
+  const before = await pairings(deps, id).catch(() => null);
+  assert.strictEqual(before, null, "pairings() has no codes, Ana is locked");
+
+  const set = await call(deps, { action: "setcodes", id, password: ENV.HOST_PASSWORD, codes: { "Ana Müller": "9999", "Peter Meier": "5555" } });
+  assert.strictEqual(set.status, 200);
+  assert.strictEqual((await call(deps, { action: "reveal", id, index: 0, code: "4821" })).status, 401, "old code stops working");
+  assert.strictEqual((await call(deps, { action: "reveal", id, index: 0, code: "9999" })).status, 200);
+  assert.strictEqual((await call(deps, { action: "reveal", id, index: 1, code: "5555" })).status, 200);
+
+  const first = (await call(deps, { action: "reveal", id, index: 0, code: "9999" })).body.recipient;
+  let changed = false;
+  for (let i = 0; i < 5; i++) {
+    await call(deps, { action: "reshuffle", id, password: ENV.HOST_PASSWORD });
+    assert.strictEqual((await call(deps, { action: "reveal", id, index: 0 })).status, 401, "codes survive a reshuffle");
+    if ((await call(deps, { action: "reveal", id, index: 0, code: "9999" })).body.recipient !== first) changed = true;
+  }
+  assert.ok(changed);
+
+  await call(deps, { action: "setcodes", id, password: ENV.HOST_PASSWORD, codes: {} });
+  assert.strictEqual((await call(deps, { action: "reveal", id, index: 0 })).status, 200, "all codes can be removed");
+});
+
 test("only POST with a known action is accepted", async () => {
   const deps = makeDeps();
   assert.strictEqual((await call(deps, { action: "names" }, "GET")).status, 405);
