@@ -7,8 +7,10 @@
 
   var Core = window.SantaCore;
   var I18n = window.I18n;
+  var Api = window.SantaApi;
   var t = I18n.t;
   var STORAGE_KEY = "santa-host-v1";
+  var PASSWORD_KEY = "santa-host-password"; // kept only until the tab is closed
   var $ = function (id) { return document.getElementById(id); };
 
   // names: the text box content. rules: [{a, b, both}]. link: last link created.
@@ -192,18 +194,34 @@
     $("result").hidden = false;
   }
 
-  function impossibleHints(names, forbidden) {
+  function hintsText(hints) {
     return function () {
       return {
-        hints: Core.explainImpossible(names, forbidden).map(function (h) {
+        hints: (hints || []).map(function (h) {
           return t(h.type === "giver" ? "hint_giver" : "hint_receiver", { name: h.name });
         }).join(" ")
       };
     };
   }
 
+  // Shows the server's error code as a sentence in the chosen language.
+  function showDrawError(message, answer) {
+    message.className = "msg error";
+    switch (answer.error) {
+      case "bad_password": return setMessage(message, "draw_bad_password");
+      case "no_password_set": return setMessage(message, "draw_no_password");
+      case "no_storage": return setMessage(message, "draw_no_storage");
+      case "impossible": return setMessage(message, "draw_impossible", hintsText(answer.hints));
+      case "duplicates": return setMessage(message, "draw_dupes", { names: (answer.names || []).join(", ") });
+      case "too_few": return setMessage(message, "draw_few");
+      case "bad_rule": return setMessage(message, "draw_broken_rule");
+      default: return setMessage(message, "draw_error");
+    }
+  }
+
   function onDraw() {
     var message = $("draw-msg");
+    message.className = "msg error";
     clearMessage(message);
 
     var parsed = Core.parseNames($("names").value);
@@ -218,17 +236,17 @@
       return;
     }
 
-    var forbidden = [];
-    var broken = false;
-    state.rules.forEach(function (rule) {
-      var a = names.indexOf(rule.a);
-      var b = names.indexOf(rule.b);
-      if (a === -1 || b === -1) { broken = true; return; }
-      forbidden.push([a, b]);
-      if (rule.both) forbidden.push([b, a]);
+    var broken = state.rules.some(function (rule) {
+      return names.indexOf(rule.a) === -1 || names.indexOf(rule.b) === -1;
     });
     if (broken) {
       setMessage(message, "draw_broken_rule");
+      return;
+    }
+
+    var password = $("host-password").value;
+    if (!password) {
+      setMessage(message, "draw_password_empty");
       return;
     }
 
@@ -236,21 +254,31 @@
       return;
     }
 
-    var result = Core.draw(names, forbidden);
-    if (!result.ok) {
-      setMessage(message, "draw_impossible", impossibleHints(names, forbidden));
-      return;
-    }
-    if (!Core.verify(names.length, forbidden, result.assignment)) {
-      setMessage(message, "draw_error");
-      return;
-    }
+    var button = $("draw");
+    button.disabled = true;
+    message.className = "msg";
+    setMessage(message, "draw_working");
 
-    var link = new URL("index.html", window.location.href);
-    link.hash = "d=" + Core.encodeDraw(names, result.assignment);
-    state.link = link.href;
-    saveState();
-    showLink(state.link);
+    // The draw happens on the server, so this page never sees who gives to whom.
+    Api.call("create", { password: password, names: names, rules: state.rules }).then(function (answer) {
+      button.disabled = false;
+      if (!answer.ok) {
+        showDrawError(message, answer);
+        return;
+      }
+      message.className = "msg error";
+      clearMessage(message);
+      try { window.sessionStorage.setItem(PASSWORD_KEY, password); } catch (e) { /* ignore */ }
+      var link = new URL("index.html", window.location.href);
+      link.hash = "e=" + answer.id;
+      state.link = link.href;
+      saveState();
+      showLink(state.link);
+    }, function () {
+      button.disabled = false;
+      message.className = "msg error";
+      setMessage(message, "draw_offline");
+    });
   }
 
   function onCopyLink() {
@@ -290,6 +318,7 @@
     I18n.onChange(onLanguageChanged);
     loadState();
     $("names").value = state.names;
+    try { $("host-password").value = window.sessionStorage.getItem(PASSWORD_KEY) || ""; } catch (e) { /* ignore */ }
     $("names").addEventListener("input", onNamesChanged);
     $("add-rule").addEventListener("click", onAddRule);
     $("draw").addEventListener("click", onDraw);

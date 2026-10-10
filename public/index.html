@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="robots" content="noindex, nofollow">
-  <title>Amigo Invisible</title>
+  <title>Secret Santa</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,9 +21,21 @@
     <button id="lang-toggle" class="lang-toggle" type="button">English</button>
   </div>
 
+  <!-- Loading -->
+  <section id="screen-loading">
+    <h1 tabindex="-1" data-i18n="loading">Cargando…</h1>
+  </section>
+
+  <!-- Server cannot be reached -->
+  <section id="screen-offline" hidden>
+    <h1 tabindex="-1" data-i18n="offline_title">No hay conexión con el servidor</h1>
+    <p data-i18n="offline_text">Comprueba tu conexión a internet e inténtalo de nuevo.</p>
+    <button class="btn" id="retry" type="button" data-i18n="retry">Intentar de nuevo</button>
+  </section>
+
   <!-- 1. Type your name -->
   <section id="screen-name" hidden>
-    <h1 tabindex="-1" data-i18n="app_title">Amigo Invisible</h1>
+    <h1 tabindex="-1" data-i18n="app_title">Secret Santa</h1>
     <form id="name-form" autocomplete="off" novalidate>
       <label for="name-input" data-i18n="name_label">Escribe tu nombre</label>
       <input id="name-input" type="text" autocomplete="off" autocapitalize="words"
@@ -48,44 +61,67 @@
     <p class="big-name" id="result-recipient"></p>
     <p data-i18n="keep_secret">Por favor, mantenlo en secreto.</p>
     <button class="btn" id="result-done" type="button" data-i18n="done">He terminado – ocultar esta pantalla</button>
-    <button class="btn secondary" id="open-wishlist" type="button" data-i18n="open_wishlist">Mi lista de deseos</button>
+    <button class="btn secondary" id="open-people" type="button" data-i18n="open_people">Listas de deseos</button>
+    <button class="btn secondary" id="open-mine" type="button" data-i18n="open_mine">Mi lista de deseos</button>
   </section>
 
-  <!-- 4. Wishlist (optional) -->
-  <section id="screen-wishlist" hidden>
+  <!-- 4a. Everybody's wishlists: pick a name -->
+  <section id="screen-people" hidden>
+    <h1 tabindex="-1" data-i18n="people_title">Listas de deseos</h1>
+    <p class="hint" data-i18n="people_hint">Toca un nombre para ver su lista de deseos.</p>
+    <ul id="people-list" class="suggestions"></ul>
+    <button class="btn" id="people-back" type="button" data-i18n="back">Volver</button>
+  </section>
+
+  <!-- 4b. One person's wishlist (read only) -->
+  <section id="screen-person" hidden>
+    <h1 tabindex="-1" id="person-title"></h1>
+    <p id="person-empty"></p>
+    <div id="person-notes-box">
+      <h2 data-i18n="notes_title">Notas e ideas</h2>
+      <p class="notes-view" id="person-notes"></p>
+    </div>
+    <div id="person-links-box">
+      <h2 data-i18n="links_title">Enlaces</h2>
+      <ul id="person-links" class="list"></ul>
+    </div>
+    <button class="btn" id="person-back" type="button" data-i18n="back">Volver</button>
+  </section>
+
+  <!-- 4c. My wishlist (editable) -->
+  <section id="screen-mine" hidden>
     <h1 tabindex="-1" data-i18n="wish_title">Mi lista de deseos</h1>
-    <p class="hint" data-i18n="wish_hint">Todo lo que escribas aquí se guarda solo en este dispositivo.</p>
+    <p class="hint" data-i18n="wish_hint">Todos los participantes pueden leer tu lista de deseos.</p>
 
-    <h2 id="h-notes" data-i18n="notes_title">Notas e ideas de regalo</h2>
-    <textarea id="notes" rows="6" aria-labelledby="h-notes"></textarea>
-    <p id="notes-status" class="hint" role="status"></p>
+    <h2 id="h-notes" data-i18n="notes_title">Notas e ideas</h2>
+    <textarea id="notes" rows="6" maxlength="2000" aria-labelledby="h-notes"></textarea>
+    <p id="save-status" class="hint" role="status"></p>
 
-    <h2 id="h-links" data-i18n="links_title">Enlaces de cosas que me gustarían</h2>
+    <h2 id="h-links" data-i18n="links_title">Enlaces</h2>
     <form id="link-form" novalidate>
       <label for="link-url" data-i18n="link_label">Pega un enlace</label>
       <input id="link-url" type="url" inputmode="url" autocomplete="off" autocapitalize="off"
              autocorrect="off" spellcheck="false">
       <label for="link-note" data-i18n="link_note_label">Nota corta (opcional)</label>
-      <input id="link-note" type="text" autocomplete="off">
+      <input id="link-note" type="text" autocomplete="off" maxlength="200">
       <p id="link-msg" class="msg error" role="alert" hidden></p>
       <button class="btn" type="submit" data-i18n="link_add">Añadir este enlace</button>
     </form>
     <ul id="link-list" class="list"></ul>
 
-    <button class="btn secondary spacer" id="copy-wish" type="button" data-i18n="copy_wish">Copiar mi lista para enviarla</button>
-    <p id="copy-msg" class="msg" role="status" hidden></p>
-    <button class="btn" id="wish-back" type="button" data-i18n="back">Volver</button>
+    <button class="btn spacer" id="mine-back" type="button" data-i18n="back">Volver</button>
   </section>
 
   <!-- Broken or missing link -->
   <section id="screen-error" hidden>
     <h1 tabindex="-1" data-i18n="error_title">Este enlace no funciona</h1>
-    <p data-i18n="error_text">El enlace parece estar incompleto. Pide a la persona que organiza el Amigo Invisible que te lo envíe otra vez.</p>
+    <p data-i18n="error_text">El enlace parece estar incompleto. Pide a la persona que organiza el Secret Santa que te lo envíe otra vez.</p>
   </section>
 
 </main>
 <script src="shared.js"></script>
 <script src="i18n.js"></script>
+<script src="api.js"></script>
 <script src="guest.js"></script>
 </body>
 </html>

@@ -60,6 +60,7 @@ label {
 
 input[type="text"],
 input[type="url"],
+input[type="password"],
 textarea,
 select {
   display: block;
@@ -211,3 +212,22 @@ textarea {
 }
 
 .spacer { margin-top: 2.5rem; }
+
+/* Name buttons with a second line of small text */
+.btn .sub {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* Someone else's notes, shown as plain text with their line breaks */
+.notes-view {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--card);
+  border: 3px solid var(--line);
+  border-radius: 0.75rem;
+}

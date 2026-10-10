@@ -1,6 +1,6 @@
 /*
  * Secret Santa – shared helpers.
- * Used by host.html, index.html and the tests (node test/draw.test.js).
+ * Used by the pages (public/), by the server (server/handler.js) and by the tests.
  * No dependencies. Works in browsers from about 2017 on.
  */
 (function (root, factory) {
@@ -205,52 +205,45 @@
     return notes;
   }
 
-  /* ------------------------------------------------------- Link encoding */
+  /* ------------------------------------------------------------- Wishlist */
 
-  function toBase64Url(bytes) {
-    var bin = "";
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  }
+  // Limits are enforced by the server too. The browser only uses them to stay friendly.
+  var LIMITS = { notes: 2000, noteText: 200, url: 1000, links: 30 };
 
-  function fromBase64Url(text) {
-    var b64 = text.replace(/-/g, "+").replace(/_/g, "/");
-    b64 += "====".slice(b64.length % 4 || 4);
-    if (b64.length % 4 !== 0) b64 = b64.slice(0, b64.length - (b64.length % 4));
-    var bin = atob(b64);
-    var bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes;
-  }
-
-  // The whole draw travels inside the link (after the #), so no server is needed.
-  function encodeDraw(names, assignment) {
-    var json = JSON.stringify({ v: 1, n: names, a: assignment });
-    return toBase64Url(new TextEncoder().encode(json));
-  }
-
-  // Returns { names, assignment } or null if the text is not a valid draw.
-  function decodeDraw(text) {
+  // Only normal web links are accepted (never "javascript:" and similar).
+  // "www.shop.com/x" becomes "https://www.shop.com/x". Returns null if unusable.
+  function cleanUrl(text) {
+    var s = String(text).trim();
+    if (!s || s.length > LIMITS.url) return null;
+    if (!/^[a-z][a-z0-9+.\-]*:/i.test(s)) s = "https://" + s;
     try {
-      var data = JSON.parse(new TextDecoder().decode(fromBase64Url(String(text))));
-      if (!data || data.v !== 1 || !Array.isArray(data.n) || !Array.isArray(data.a)) return null;
-      if (data.n.length < 3 || data.n.length > 500) return null;
-      var allText = data.n.every(function (n) { return typeof n === "string" && n.trim() !== ""; });
-      if (!allText || !verify(data.n.length, [], data.a)) return null;
-      return { names: data.n, assignment: data.a };
+      var url = new URL(s);
+      if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+      if (url.hostname.indexOf(".") === -1) return null;
+      return url.href.length > LIMITS.url ? null : url.href;
     } catch (e) {
       return null;
     }
   }
 
-  // Short fingerprint of a draw, used to keep wishlists of different draws apart.
-  function shortId(text) {
-    var h = 0x811c9dc5;
-    for (var i = 0; i < text.length; i++) {
-      h ^= text.charCodeAt(i);
-      h = Math.imul(h, 0x01000193) >>> 0;
-    }
-    return h.toString(36);
+  function hostName(href) {
+    try { return new URL(href).hostname.replace(/^www\./, ""); } catch (e) { return String(href); }
+  }
+
+  // Cleans whatever a browser sent: { notes, links: [{ url, note }] }.
+  // Unusable links are dropped, texts are cut to their limits.
+  function sanitizeWish(raw) {
+    raw = raw && typeof raw === "object" ? raw : {};
+    var notes = typeof raw.notes === "string" ? raw.notes.replace(/\r\n/g, "\n").slice(0, LIMITS.notes) : "";
+    var links = [];
+    (Array.isArray(raw.links) ? raw.links : []).forEach(function (item) {
+      if (links.length >= LIMITS.links || !item || typeof item.url !== "string") return;
+      var url = cleanUrl(item.url);
+      if (!url) return;
+      var note = typeof item.note === "string" ? item.note.trim().slice(0, LIMITS.noteText) : "";
+      links.push({ url: url, note: note });
+    });
+    return { notes: notes, links: links };
   }
 
   /* ------------------------------------------------------------ Clipboard */
@@ -285,9 +278,10 @@
     draw: draw,
     verify: verify,
     explainImpossible: explainImpossible,
-    encodeDraw: encodeDraw,
-    decodeDraw: decodeDraw,
-    shortId: shortId,
+    LIMITS: LIMITS,
+    cleanUrl: cleanUrl,
+    hostName: hostName,
+    sanitizeWish: sanitizeWish,
     copyText: copyText
   };
 });

@@ -1,6 +1,6 @@
 // Run with:  node test/draw.test.js
 const assert = require("assert");
-const Core = require("../shared.js");
+const Core = require("../public/shared.js");
 
 // Small seeded random generator so the tests give the same result every time.
 function seeded(seed) {
@@ -137,30 +137,24 @@ test("draw: nobody is favoured (4 people, 6000 draws)", () => {
   assert.strictEqual(counts["0>0"], undefined);
 });
 
-test("encodeDraw / decodeDraw round trip, including umlauts and emoji", () => {
-  const names = ["Anna Müller", "Zoë", "Ünal 🎄", "Peter"];
-  const assignment = [1, 2, 3, 0];
-  const code = Core.encodeDraw(names, assignment);
-  assert.ok(/^[A-Za-z0-9_-]+$/.test(code), "link code must be URL safe");
-  assert.deepStrictEqual(Core.decodeDraw(code), { names, assignment });
+test("cleanUrl accepts normal web addresses only", () => {
+  assert.strictEqual(Core.cleanUrl("www.shop.example/lamp?id=3"), "https://www.shop.example/lamp?id=3");
+  assert.strictEqual(Core.cleanUrl("  http://a.example.com  "), "http://a.example.com/");
+  ["javascript:alert(1)", "data:text/html,x", "ftp://a.example.com", "just words", "localhost", "", "   "].forEach((bad) => {
+    assert.strictEqual(Core.cleanUrl(bad), null, bad);
+  });
+  assert.strictEqual(Core.cleanUrl("https://a.example.com/" + "x".repeat(1100)), null);
 });
 
-test("decodeDraw rejects broken or tampered links", () => {
-  const good = Core.encodeDraw(["A", "B", "C"], [1, 2, 0]);
-  assert.strictEqual(Core.decodeDraw(""), null);
-  assert.strictEqual(Core.decodeDraw("%%%"), null);
-  assert.strictEqual(Core.decodeDraw(good.slice(0, 10)), null);
-  const bad = (obj) => Core.decodeDraw(Buffer.from(JSON.stringify(obj)).toString("base64url"));
-  assert.strictEqual(bad({ v: 1, n: ["A", "B", "C"], a: [0, 1, 2] }), null); // gets themselves
-  assert.strictEqual(bad({ v: 1, n: ["A", "B", "C"], a: [1, 1, 0] }), null); // not a permutation
-  assert.strictEqual(bad({ v: 2, n: ["A", "B", "C"], a: [1, 2, 0] }), null); // unknown version
-  assert.strictEqual(bad({ v: 1, n: ["A", "B"], a: [1, 0] }), null);         // too few
-  assert.notStrictEqual(bad({ v: 1, n: ["A", "B", "C"], a: [1, 2, 0] }), null);
+test("hostName shows a short site name", () => {
+  assert.strictEqual(Core.hostName("https://www.shop.example/lamp"), "shop.example");
 });
 
-test("shortId is stable and differs between draws", () => {
-  assert.strictEqual(Core.shortId("abc"), Core.shortId("abc"));
-  assert.notStrictEqual(Core.shortId("abc"), Core.shortId("abd"));
+test("sanitizeWish keeps good data and drops the rest", () => {
+  const w = Core.sanitizeWish({ notes: "a\r\nb", links: [{ url: "a.example.com", note: " hi " }, { url: "javascript:1" }, null, { url: 5 }] });
+  assert.deepStrictEqual(w, { notes: "a\nb", links: [{ url: "https://a.example.com/", note: "hi" }] });
+  assert.deepStrictEqual(Core.sanitizeWish(null), { notes: "", links: [] });
+  assert.deepStrictEqual(Core.sanitizeWish({ notes: 5, links: "x" }), { notes: "", links: [] });
 });
 
 console.log(failed ? "\n" + failed + " test(s) failed" : "\nAll tests passed");

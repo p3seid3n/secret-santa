@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="robots" content="noindex, nofollow">
-  <title>Amigo Invisible – organizador</title>
+  <title>Secret Santa – organizador</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,7 +21,7 @@
     <button id="lang-toggle" class="lang-toggle" type="button">English</button>
   </div>
 
-  <h1 data-i18n="host_title">Amigo Invisible – organizador</h1>
+  <h1 data-i18n="host_title">Secret Santa – organizador</h1>
   <p class="hint" data-i18n="host_intro">Esta página es solo para ti. Tus invitados solo reciben el enlace que creas al final.</p>
 
   <h2 id="h-names" data-i18n="h_names">1. ¿Quién participa?</h2>
@@ -42,12 +43,14 @@
   <ul id="rule-list" class="list"></ul>
 
   <h2 id="h-draw" data-i18n="h_draw">3. Sorteo</h2>
+  <label for="host-password" data-i18n="host_password_label">Contraseña del organizador</label>
+  <input id="host-password" type="password" autocomplete="current-password">
   <button class="btn" id="draw" type="button" data-i18n="draw_btn">Sortear y crear el enlace</button>
   <p id="draw-msg" class="msg error" role="alert" hidden></p>
 
   <section id="result" hidden>
     <h2 data-i18n="result_title">Tu enlace</h2>
-    <p data-i18n="result_text">Envía este enlace a todas las personas que participan. Cada una lo abre, escribe su nombre y ve a quién le toca regalar.</p>
+    <p data-i18n="result_text">Envía este enlace a todas las personas que participan. Cada una lo abre, escribe su nombre, ve a quién le toca regalar y puede leer las listas de deseos.</p>
     <label for="link-out" data-i18n="link_for_guests">Enlace para tus invitados</label>
     <input type="text" id="link-out" readonly>
     <button class="btn" id="copy-link" type="button" data-i18n="copy_link">Copiar enlace</button>
@@ -61,6 +64,7 @@
 </main>
 <script src="shared.js"></script>
 <script src="i18n.js"></script>
+<script src="api.js"></script>
 <script src="host.js"></script>
 </body>
 </html>

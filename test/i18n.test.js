@@ -3,10 +3,10 @@
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
-const I18n = require("../i18n.js");
+const I18n = require("../public/i18n.js");
 
 const root = path.join(__dirname, "..");
-const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
+const read = (f) => fs.readFileSync(path.join(root, "public", f), "utf8");
 const { es, en } = I18n.STRINGS;
 
 let failed = 0;
@@ -55,8 +55,10 @@ function usedKeys() {
       while ((m = call.exec(text))) keys.add(m[1]);
       const msg = /setMessage\([^,)]+,\s*"([a-z_]+)"/g;
       while ((m = msg.exec(text))) keys.add(m[1]);
+      // Server error codes such as case "bad_password": or === "not_found" are not texts.
+      const withoutCodes = text.replace(/(?:case\s+|===\s*)"[a-z_]+"/g, "");
       const underscored = /"([a-z]+(?:_[a-z]+)+)"/g;
-      while ((m = underscored.exec(text))) keys.add(m[1]);
+      while ((m = underscored.exec(withoutCodes))) keys.add(m[1]);
     }
     if (file === "i18n.js") {
       const call = /\bt\("([a-z_]+)"/g;
