@@ -222,6 +222,10 @@ test("store selection follows the environment", () => {
   assert.strictEqual(createStore({}).kind, "memory");
   assert.strictEqual(createStore({ KV_REST_API_URL: "https://a/", KV_REST_API_TOKEN: "t" }).kind, "upstash");
   assert.strictEqual(createStore({ UPSTASH_REDIS_REST_URL: "https://a", UPSTASH_REDIS_REST_TOKEN: "t" }).kind, "upstash");
+  assert.strictEqual(createStore({ VERCEL: "1", STORAGE_KV_REST_API_URL: "https://a", STORAGE_KV_REST_API_TOKEN: "t" }).kind, "upstash", "prefixed names");
+  assert.strictEqual(createStore({ VERCEL: "1", MY_UPSTASH_REDIS_REST_URL: "https://a", MY_UPSTASH_REDIS_REST_TOKEN: "t" }).kind, "upstash", "prefixed names");
+  assert.strictEqual(createStore({ VERCEL: "1", KV_REST_API_URL: "https://a", KV_REST_API_READ_ONLY_TOKEN: "t" }), null, "read-only token alone is not enough");
+  assert.strictEqual(createStore({ VERCEL: "1", A_KV_REST_API_URL: "https://a", B_KV_REST_API_TOKEN: "t" }), null, "prefixes must match");
   assert.strictEqual(createStore({ VERCEL: "1" }), null, "never use memory on Vercel");
   assert.strictEqual(createStore({ NODE_ENV: "production" }), null);
 });

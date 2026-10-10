@@ -46,11 +46,29 @@ function upstashStore(baseUrl, token, fetchImpl) {
   };
 }
 
+// Vercel may add a prefix to the variable names (for example STORAGE_KV_REST_API_URL),
+// so any name that ends in one of the known names is accepted, as long as the matching
+// token has the same prefix.
+const CREDENTIAL_NAMES = [
+  ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
+  ["KV_REST_API_URL", "KV_REST_API_TOKEN"]
+];
+
+function findCredentials(env) {
+  for (const [urlName, tokenName] of CREDENTIAL_NAMES) {
+    for (const name of Object.keys(env)) {
+      if (name !== urlName && !name.endsWith("_" + urlName)) continue;
+      const prefix = name.slice(0, name.length - urlName.length);
+      if (env[name] && env[prefix + tokenName]) return { url: env[name], token: env[prefix + tokenName] };
+    }
+  }
+  return null;
+}
+
 // Returns a store, or null when the server has no database configured.
 function createStore(env, fetchImpl) {
-  const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
-  const token = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
-  if (url && token) return upstashStore(url.replace(/\/+$/, ""), token, fetchImpl || fetch);
+  const found = findCredentials(env);
+  if (found) return upstashStore(found.url.replace(/\/+$/, ""), found.token, fetchImpl || fetch);
   if (!env.VERCEL && env.NODE_ENV !== "production") return memoryStore();
   return null;
 }
