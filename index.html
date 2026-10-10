@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Secret Santa</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+
+  <noscript>
+    <p class="msg error">This page needs JavaScript. Please turn it on in your browser settings.</p>
+  </noscript>
+
+  <!-- 1. Type your name -->
+  <section id="screen-name" hidden>
+    <h1 tabindex="-1">Secret Santa</h1>
+    <form id="name-form" autocomplete="off" novalidate>
+      <label for="name-input">Please type your name</label>
+      <input id="name-input" type="text" autocomplete="off" autocapitalize="words"
+             autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="name-msg">
+      <ul id="suggestions" class="suggestions"></ul>
+      <p id="name-msg" class="msg error" role="alert" hidden></p>
+      <button class="btn" type="submit">Next</button>
+    </form>
+  </section>
+
+  <!-- 2. Is this you? -->
+  <section id="screen-confirm" hidden>
+    <h1 tabindex="-1">Is this you?</h1>
+    <p class="big-name" id="confirm-name"></p>
+    <button class="btn" id="confirm-yes" type="button">Yes, that is me</button>
+    <button class="btn secondary" id="confirm-no" type="button">No, go back</button>
+  </section>
+
+  <!-- 3. Your Secret Santa result -->
+  <section id="screen-result" hidden>
+    <h1 tabindex="-1">Hello <span id="result-me"></span>!</h1>
+    <p>You will give a gift to:</p>
+    <p class="big-name" id="result-recipient"></p>
+    <p>Please keep it a secret.</p>
+    <button class="btn" id="result-done" type="button">I am done – hide this screen</button>
+    <button class="btn secondary" id="open-wishlist" type="button">My wishlist</button>
+  </section>
+
+  <!-- 4. Wishlist (optional) -->
+  <section id="screen-wishlist" hidden>
+    <h1 tabindex="-1">My wishlist</h1>
+    <p class="hint">Everything here is saved on this device only.</p>
+
+    <h2 id="h-notes">Notes and gift ideas</h2>
+    <textarea id="notes" rows="6" aria-labelledby="h-notes"></textarea>
+    <p id="notes-status" class="hint" role="status"></p>
+
+    <h2 id="h-links">Links to things I would like</h2>
+    <form id="link-form" novalidate>
+      <label for="link-url">Paste a link</label>
+      <input id="link-url" type="url" inputmode="url" autocomplete="off" autocapitalize="off"
+             autocorrect="off" spellcheck="false">
+      <label for="link-note">Short note (optional)</label>
+      <input id="link-note" type="text" autocomplete="off">
+      <p id="link-msg" class="msg error" role="alert" hidden></p>
+      <button class="btn" type="submit">Add this link</button>
+    </form>
+    <ul id="link-list" class="list"></ul>
+
+    <button class="btn secondary spacer" id="copy-wish" type="button">Copy my wishlist to send it</button>
+    <p id="copy-msg" class="msg" role="status" hidden></p>
+    <button class="btn" id="wish-back" type="button">Back</button>
+  </section>
+
+  <!-- Broken or missing link -->
+  <section id="screen-error" hidden>
+    <h1 tabindex="-1">This link does not work</h1>
+    <p>The link seems to be incomplete. Please ask the person who organises the Secret Santa to send it to you again.</p>
+  </section>
+
+</main>
+<script src="shared.js"></script>
+<script src="guest.js"></script>
+</body>
+</html>

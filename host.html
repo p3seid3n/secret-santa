@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Secret Santa – host</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+
+  <noscript>
+    <p class="msg error">This page needs JavaScript. Please turn it on in your browser settings.</p>
+  </noscript>
+
+  <h1>Secret Santa – host</h1>
+  <p class="hint">This page is only for you. Your guests only receive the link you create at the end.</p>
+
+  <h2 id="h-names">1. Who is taking part?</h2>
+  <label for="names">One name per line, at least 3 people. If two people share a name, add an initial, for example “Anna M.” and “Anna K.”</label>
+  <textarea id="names" rows="8" spellcheck="false" autocomplete="off"></textarea>
+  <p id="names-count" class="hint" role="status"></p>
+
+  <h2 id="h-rules">2. Who should not get whom? (optional)</h2>
+  <label for="rule-a">Person</label>
+  <select id="rule-a"></select>
+  <label for="rule-b">should not give a gift to</label>
+  <select id="rule-b"></select>
+  <label class="check" for="rule-both">
+    <input type="checkbox" id="rule-both" checked>
+    <span>Also the other way around</span>
+  </label>
+  <p id="rule-msg" class="msg error" role="alert" hidden></p>
+  <button class="btn secondary" id="add-rule" type="button">Add this rule</button>
+  <ul id="rule-list" class="list"></ul>
+
+  <h2 id="h-draw">3. Draw</h2>
+  <button class="btn" id="draw" type="button">Draw names and create the link</button>
+  <p id="draw-msg" class="msg error" role="alert" hidden></p>
+
+  <section id="result" hidden>
+    <h2>Your link</h2>
+    <p>Send this link to everyone who takes part. Each person opens it, types their own name and sees who they give a gift to.</p>
+    <label for="link-out">Link for your guests</label>
+    <input type="text" id="link-out" readonly>
+    <button class="btn" id="copy-link" type="button">Copy link</button>
+    <a class="btn secondary" id="open-link" href="#" target="_blank" rel="noopener">Open the guest page</a>
+    <p id="copy-msg" class="msg" role="status" hidden></p>
+    <p class="hint">Drawing again creates a new link. Only send the newest one.</p>
+  </section>
+
+  <button class="btn secondary spacer" id="reset" type="button">Start over</button>
+
+</main>
+<script src="shared.js"></script>
+<script src="host.js"></script>
+</body>
+</html>

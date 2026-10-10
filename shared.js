@@ -1,0 +1,290 @@
+/*
+ * Secret Santa – shared helpers.
+ * Used by host.html, index.html and the tests (node test/draw.test.js).
+ * No dependencies. Works in browsers from about 2017 on.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory();
+  } else {
+    root.SantaCore = factory();
+  }
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  /* ---------------------------------------------------------------- Names */
+
+  // Lower case, no accents, single spaces: "  Müller   Anna " -> "muller anna"
+  function normalize(text) {
+    return String(text)
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/ß/g, "ss")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function cleanName(text) {
+    return String(text).replace(/\s+/g, " ").trim();
+  }
+
+  // One name per line. Returns the clean list plus names that appear twice.
+  function parseNames(text) {
+    var seen = {};
+    var names = [];
+    var duplicates = [];
+    String(text).split(/\r?\n/).forEach(function (line) {
+      var name = cleanName(line);
+      if (!name) return;
+      var key = normalize(name);
+      if (seen[key]) {
+        if (duplicates.indexOf(name) === -1) duplicates.push(name);
+        return;
+      }
+      seen[key] = true;
+      names.push(name);
+    });
+    return { names: names, duplicates: duplicates };
+  }
+
+  // Autocomplete: every typed word must be the beginning of a word in the name.
+  // "an mu" finds "Anna Müller". Falls back to "contains" if nothing matches.
+  function findMatches(names, query) {
+    var q = normalize(query);
+    if (!q) return [];
+    var tokens = q.split(" ");
+    var norm = names.map(normalize);
+    var hits = [];
+
+    names.forEach(function (_, i) {
+      var words = norm[i].split(" ");
+      var ok = tokens.every(function (t) {
+        return words.some(function (w) { return w.indexOf(t) === 0; });
+      });
+      if (ok) hits.push(i);
+    });
+
+    if (!hits.length) {
+      names.forEach(function (_, i) {
+        if (norm[i].indexOf(q) !== -1) hits.push(i);
+      });
+    }
+
+    function rank(i) {
+      if (norm[i] === q) return 0;
+      if (norm[i].indexOf(q) === 0) return 1;
+      return 2;
+    }
+    hits.sort(function (a, b) {
+      return rank(a) - rank(b) || (names[a] < names[b] ? -1 : names[a] > names[b] ? 1 : 0);
+    });
+    return hits;
+  }
+
+  /* ----------------------------------------------------------------- Draw */
+
+  function secureRandom() {
+    var c = typeof crypto !== "undefined" && crypto.getRandomValues ? crypto : null;
+    if (c) {
+      var a = new Uint32Array(1);
+      c.getRandomValues(a);
+      return a[0] / 4294967296;
+    }
+    return Math.random();
+  }
+
+  function range(n) {
+    var out = [];
+    for (var i = 0; i < n; i++) out.push(i);
+    return out;
+  }
+
+  function shuffle(list, rnd) {
+    var a = list.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(rnd() * (i + 1));
+      var tmp = a[i];
+      a[i] = a[j];
+      a[j] = tmp;
+    }
+    return a;
+  }
+
+  // names: array of strings.
+  // forbiddenPairs: array of [giverIndex, receiverIndex] that must NOT happen.
+  // Returns { ok: true, assignment } where assignment[giver] = receiver,
+  // or { ok: false, reason: "tooFew" | "impossible" }.
+  function draw(names, forbiddenPairs, rnd) {
+    rnd = rnd || secureRandom;
+    var n = names.length;
+    if (n < 3) return { ok: false, reason: "tooFew" };
+
+    var banned = [];
+    for (var g = 0; g < n; g++) {
+      banned.push(new Array(n).fill(false));
+      banned[g][g] = true; // nobody gets themselves
+    }
+    (forbiddenPairs || []).forEach(function (pair) {
+      banned[pair[0]][pair[1]] = true;
+    });
+
+    // 1) Fair way: shuffle everybody and check the rules. Almost always works.
+    for (var attempt = 0; attempt < 3000; attempt++) {
+      var perm = shuffle(range(n), rnd);
+      var good = true;
+      for (var i = 0; i < n; i++) {
+        if (banned[i][perm[i]]) { good = false; break; }
+      }
+      if (good) return { ok: true, assignment: perm };
+    }
+
+    // 2) Guaranteed way for very strict rules: find a complete matching.
+    var prefs = range(n).map(function (giver) {
+      return shuffle(range(n).filter(function (r) { return !banned[giver][r]; }), rnd);
+    });
+    var giverOf = new Array(n).fill(-1);
+
+    function place(giver, seen) {
+      var options = prefs[giver];
+      for (var k = 0; k < options.length; k++) {
+        var r = options[k];
+        if (seen[r]) continue;
+        seen[r] = true;
+        if (giverOf[r] === -1 || place(giverOf[r], seen)) {
+          giverOf[r] = giver;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    var order = shuffle(range(n), rnd);
+    for (var o = 0; o < order.length; o++) {
+      if (!place(order[o], new Array(n).fill(false))) {
+        return { ok: false, reason: "impossible" };
+      }
+    }
+    var assignment = new Array(n);
+    giverOf.forEach(function (giver, receiver) { assignment[giver] = receiver; });
+    return { ok: true, assignment: assignment };
+  }
+
+  // True only if everybody gives exactly once, receives exactly once,
+  // nobody gets themselves and no forbidden pair happened.
+  function verify(count, forbiddenPairs, assignment) {
+    if (!Array.isArray(assignment) || assignment.length !== count) return false;
+    var seen = {};
+    for (var g = 0; g < count; g++) {
+      var r = assignment[g];
+      if (typeof r !== "number" || r % 1 !== 0 || r < 0 || r >= count || r === g || seen[r]) return false;
+      seen[r] = true;
+    }
+    return !(forbiddenPairs || []).some(function (p) { return assignment[p[0]] === p[1]; });
+  }
+
+  // Plain-language hints when the rules leave no solution.
+  function explainImpossible(names, forbiddenPairs) {
+    var n = names.length;
+    var can = range(n).map(function (g) {
+      return range(n).map(function (r) { return g !== r; });
+    });
+    forbiddenPairs.forEach(function (p) { can[p[0]][p[1]] = false; });
+    var notes = [];
+    for (var g = 0; g < n; g++) {
+      if (!can[g].some(Boolean)) notes.push(names[g] + " would have nobody left to give a gift to.");
+    }
+    for (var r = 0; r < n; r++) {
+      var anyone = false;
+      for (var k = 0; k < n; k++) if (can[k][r]) anyone = true;
+      if (!anyone) notes.push("Nobody would be allowed to give a gift to " + names[r] + ".");
+    }
+    return notes;
+  }
+
+  /* ------------------------------------------------------- Link encoding */
+
+  function toBase64Url(bytes) {
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function fromBase64Url(text) {
+    var b64 = text.replace(/-/g, "+").replace(/_/g, "/");
+    b64 += "====".slice(b64.length % 4 || 4);
+    if (b64.length % 4 !== 0) b64 = b64.slice(0, b64.length - (b64.length % 4));
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  // The whole draw travels inside the link (after the #), so no server is needed.
+  function encodeDraw(names, assignment) {
+    var json = JSON.stringify({ v: 1, n: names, a: assignment });
+    return toBase64Url(new TextEncoder().encode(json));
+  }
+
+  // Returns { names, assignment } or null if the text is not a valid draw.
+  function decodeDraw(text) {
+    try {
+      var data = JSON.parse(new TextDecoder().decode(fromBase64Url(String(text))));
+      if (!data || data.v !== 1 || !Array.isArray(data.n) || !Array.isArray(data.a)) return null;
+      if (data.n.length < 3 || data.n.length > 500) return null;
+      var allText = data.n.every(function (n) { return typeof n === "string" && n.trim() !== ""; });
+      if (!allText || !verify(data.n.length, [], data.a)) return null;
+      return { names: data.n, assignment: data.a };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Short fingerprint of a draw, used to keep wishlists of different draws apart.
+  function shortId(text) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(36);
+  }
+
+  /* ------------------------------------------------------------ Clipboard */
+
+  // Browser only. Returns a Promise.
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var box = document.createElement("textarea");
+      box.value = text;
+      box.setAttribute("readonly", "");
+      box.style.position = "fixed";
+      box.style.top = "0";
+      box.style.opacity = "0";
+      document.body.appendChild(box);
+      box.select();
+      box.setSelectionRange(0, text.length);
+      var done = false;
+      try { done = document.execCommand("copy"); } catch (e) { done = false; }
+      document.body.removeChild(box);
+      if (done) resolve(); else reject(new Error("copy failed"));
+    });
+  }
+
+  return {
+    normalize: normalize,
+    cleanName: cleanName,
+    parseNames: parseNames,
+    findMatches: findMatches,
+    draw: draw,
+    verify: verify,
+    explainImpossible: explainImpossible,
+    encodeDraw: encodeDraw,
+    decodeDraw: decodeDraw,
+    shortId: shortId,
+    copyText: copyText
+  };
+});
