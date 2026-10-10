@@ -1,7 +1,10 @@
 # Secret Santa
 
-A very small, very simple Secret Santa website. Plain HTML, CSS and JavaScript:
-no server, no accounts, no tracking, nothing to install.
+A very small, very simple Secret Santa website ("Amigo Invisible"). Plain HTML, CSS and
+JavaScript: no server, no accounts, no tracking, nothing to install.
+
+The pages open in **Spanish** by default. A button at the top right switches to **English**
+(and back); the choice is remembered on that device.
 
 It is designed so that anyone can use it, including people who are not
 comfortable with computers: one question per screen, big text, big buttons,
@@ -48,7 +51,10 @@ The host page is then at `https://<your-site>/host.html`.
 - **Drawing again** creates a new link. Old links keep working with their old draw,
   so only share the newest one.
 - Names are matched without caring about capital letters or accents
-  (typing "muller" finds "Müller").
+  (typing "muller" finds "Müller", "jose" finds "José").
+- **Languages:** all texts live in `i18n.js`. Edit them there (for example, change
+  "Amigo Invisible" to "Amigo Secreto"). A guest's language choice is not part of the link:
+  everybody starts in Spanish.
 
 ## Files
 
@@ -57,11 +63,15 @@ The host page is then at `https://<your-site>/host.html`.
 | `index.html`, `guest.js` | The page your guests use |
 | `host.html`, `host.js` | The page you use to set up and draw |
 | `shared.js` | Drawing logic, name matching, link encoding |
+| `i18n.js` | All texts in Spanish and English, language button |
 | `style.css` | Look and feel (large text, high contrast) |
 | `test/draw.test.js` | Tests for the drawing logic |
 
 ## Tests
 
 ```
-node test/draw.test.js
+node test/draw.test.js && node test/i18n.test.js
 ```
+
+The second test makes sure Spanish and English are complete and that every text the
+pages use exists.

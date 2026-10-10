@@ -1,60 +1,66 @@
 <!doctype html>
-<html lang="en">
+<html lang="es" data-title-key="title_host">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="robots" content="noindex, nofollow">
-  <title>Secret Santa – host</title>
+  <title>Amigo Invisible – organizador</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
 
   <noscript>
-    <p class="msg error">This page needs JavaScript. Please turn it on in your browser settings.</p>
+    <p class="msg error">Esta página necesita JavaScript. Actívalo en la configuración de tu navegador.<br>
+    This page needs JavaScript. Please turn it on in your browser settings.</p>
   </noscript>
 
-  <h1>Secret Santa – host</h1>
-  <p class="hint">This page is only for you. Your guests only receive the link you create at the end.</p>
+  <div class="top-bar">
+    <button id="lang-toggle" class="lang-toggle" type="button">English</button>
+  </div>
 
-  <h2 id="h-names">1. Who is taking part?</h2>
-  <label for="names">One name per line, at least 3 people. If two people share a name, add an initial, for example “Anna M.” and “Anna K.”</label>
+  <h1 data-i18n="host_title">Amigo Invisible – organizador</h1>
+  <p class="hint" data-i18n="host_intro">Esta página es solo para ti. Tus invitados solo reciben el enlace que creas al final.</p>
+
+  <h2 id="h-names" data-i18n="h_names">1. ¿Quién participa?</h2>
+  <label for="names" data-i18n="names_label">Un nombre por línea, mínimo 3 personas. Si dos personas se llaman igual, añade una inicial, por ejemplo “Ana M.” y “Ana K.”</label>
   <textarea id="names" rows="8" spellcheck="false" autocomplete="off"></textarea>
   <p id="names-count" class="hint" role="status"></p>
 
-  <h2 id="h-rules">2. Who should not get whom? (optional)</h2>
-  <label for="rule-a">Person</label>
+  <h2 id="h-rules" data-i18n="h_rules">2. ¿Quién no debe regalar a quién? (opcional)</h2>
+  <label for="rule-a" data-i18n="rule_person">Persona</label>
   <select id="rule-a"></select>
-  <label for="rule-b">should not give a gift to</label>
+  <label for="rule-b" data-i18n="rule_not_give">no debe hacer el regalo a</label>
   <select id="rule-b"></select>
   <label class="check" for="rule-both">
     <input type="checkbox" id="rule-both" checked>
-    <span>Also the other way around</span>
+    <span data-i18n="rule_both">También al revés</span>
   </label>
   <p id="rule-msg" class="msg error" role="alert" hidden></p>
-  <button class="btn secondary" id="add-rule" type="button">Add this rule</button>
+  <button class="btn secondary" id="add-rule" type="button" data-i18n="rule_add">Añadir esta regla</button>
   <ul id="rule-list" class="list"></ul>
 
-  <h2 id="h-draw">3. Draw</h2>
-  <button class="btn" id="draw" type="button">Draw names and create the link</button>
+  <h2 id="h-draw" data-i18n="h_draw">3. Sorteo</h2>
+  <button class="btn" id="draw" type="button" data-i18n="draw_btn">Sortear y crear el enlace</button>
   <p id="draw-msg" class="msg error" role="alert" hidden></p>
 
   <section id="result" hidden>
-    <h2>Your link</h2>
-    <p>Send this link to everyone who takes part. Each person opens it, types their own name and sees who they give a gift to.</p>
-    <label for="link-out">Link for your guests</label>
+    <h2 data-i18n="result_title">Tu enlace</h2>
+    <p data-i18n="result_text">Envía este enlace a todas las personas que participan. Cada una lo abre, escribe su nombre y ve a quién le toca regalar.</p>
+    <label for="link-out" data-i18n="link_for_guests">Enlace para tus invitados</label>
     <input type="text" id="link-out" readonly>
-    <button class="btn" id="copy-link" type="button">Copy link</button>
-    <a class="btn secondary" id="open-link" href="#" target="_blank" rel="noopener">Open the guest page</a>
+    <button class="btn" id="copy-link" type="button" data-i18n="copy_link">Copiar enlace</button>
+    <a class="btn secondary" id="open-link" href="#" target="_blank" rel="noopener" data-i18n="open_guest">Abrir la página de los invitados</a>
     <p id="copy-msg" class="msg" role="status" hidden></p>
-    <p class="hint">Drawing again creates a new link. Only send the newest one.</p>
+    <p class="hint" data-i18n="draw_again_hint">Si sorteas otra vez se crea un enlace nuevo. Envía solo el más reciente.</p>
   </section>
 
-  <button class="btn secondary spacer" id="reset" type="button">Start over</button>
+  <button class="btn secondary spacer" id="reset" type="button" data-i18n="reset">Empezar de nuevo</button>
 
 </main>
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script src="host.js"></script>
 </body>
 </html>

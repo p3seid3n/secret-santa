@@ -6,6 +6,8 @@
   "use strict";
 
   var Core = window.SantaCore;
+  var I18n = window.I18n;
+  var t = I18n.t;
   var $ = function (id) { return document.getElementById(id); };
 
   var SCREENS = ["name", "confirm", "result", "wishlist", "error"];
@@ -30,14 +32,23 @@
     }
   }
 
-  function showMessage(el, text) {
-    el.textContent = text;
+  // Messages remember their text key, so they switch language together with the page.
+  function setMessage(el, key, vars) {
+    el._key = key;
+    el._vars = vars || null;
+    el.textContent = t(key, vars);
     el.hidden = false;
   }
 
-  function hideMessage(el) {
+  function clearMessage(el) {
+    el._key = null;
+    el._vars = null;
     el.textContent = "";
     el.hidden = true;
+  }
+
+  function retranslateMessage(el) {
+    if (el._key) el.textContent = t(el._key, el._vars);
   }
 
   /* --------------------------------------------------------------- Start */
@@ -80,11 +91,11 @@
   function onNameSubmit(event) {
     event.preventDefault();
     var message = $("name-msg");
-    hideMessage(message);
+    clearMessage(message);
 
     var typed = $("name-input").value;
     if (!Core.normalize(typed)) {
-      showMessage(message, "Please type your name first.");
+      setMessage(message, "name_empty");
       return;
     }
 
@@ -98,19 +109,14 @@
     var hits = Core.findMatches(names, typed);
     if (hits.length === 1) return askToConfirm(hits[0]);
 
-    if (hits.length === 0) {
-      showMessage(message, "I cannot find that name. Please check the spelling and try again.");
-    } else {
-      showMessage(message, "Please tap your name in the list below.");
-    }
+    setMessage(message, hits.length === 0 ? "name_not_found" : "name_pick");
   }
 
   /* ------------------------------------------------- 2. Is this you? */
 
   function onConfirmYes() {
     me = pending;
-    $("result-me").textContent = names[me];
-    $("result-recipient").textContent = names[assignment[me]];
+    renderResult();
     wish = loadWish();
     show("result");
   }
@@ -122,13 +128,19 @@
 
   /* ------------------------------------------- 3. Result / hide the screen */
 
+  function renderResult() {
+    if (me < 0) return;
+    $("result-title").textContent = t("hello", { name: names[me] });
+    $("result-recipient").textContent = names[assignment[me]];
+  }
+
   function onDone() {
     me = -1;
     pending = -1;
     $("name-input").value = "";
     $("suggestions").textContent = "";
-    hideMessage($("name-msg"));
-    $("result-me").textContent = "";
+    clearMessage($("name-msg"));
+    $("result-title").textContent = "";
     $("result-recipient").textContent = "";
     show("name");
   }
@@ -185,9 +197,10 @@
 
   function openWishlist() {
     $("notes").value = wish.notes;
-    hideMessage($("link-msg"));
-    hideMessage($("copy-msg"));
-    $("notes-status").textContent = "";
+    clearMessage($("link-msg"));
+    clearMessage($("copy-msg"));
+    clearMessage($("notes-status"));
+    $("notes-status").hidden = false;
     $("link-url").value = "";
     $("link-note").value = "";
     renderLinks();
@@ -196,9 +209,7 @@
 
   function onNotesInput() {
     wish.notes = $("notes").value;
-    $("notes-status").textContent = saveWish()
-      ? "Saved on this device."
-      : "This browser could not save your notes.";
+    setMessage($("notes-status"), saveWish() ? "notes_saved" : "notes_error");
   }
 
   function renderLinks() {
@@ -229,10 +240,10 @@
       var remove = document.createElement("button");
       remove.type = "button";
       remove.className = "btn secondary small";
-      remove.textContent = "Remove";
-      remove.setAttribute("aria-label", "Remove " + label);
+      remove.textContent = t("remove");
+      remove.setAttribute("aria-label", t("remove_aria", { label: label }));
       remove.addEventListener("click", function () {
-        if (window.confirm("Remove this link from your wishlist?")) {
+        if (window.confirm(t("remove_confirm"))) {
           wish.links.splice(index, 1);
           saveWish();
           renderLinks();
@@ -247,16 +258,16 @@
   function onLinkSubmit(event) {
     event.preventDefault();
     var message = $("link-msg");
-    hideMessage(message);
+    clearMessage(message);
 
     var url = cleanUrl($("link-url").value);
     if (!url) {
-      showMessage(message, "That does not look like a web address. Please paste the link again, for example www.shop.com/item.");
+      setMessage(message, "link_bad");
       return;
     }
     wish.links.push({ url: url, note: $("link-note").value.trim() });
     if (!saveWish()) {
-      showMessage(message, "The link is shown here, but this browser could not save it.");
+      setMessage(message, "link_not_saved");
     }
     $("link-url").value = "";
     $("link-note").value = "";
@@ -266,45 +277,57 @@
   function wishAsText() {
     var lines = [];
     var notes = wish.notes.trim();
-    if (notes) lines.push("Notes and ideas:", notes, "");
+    if (notes) lines.push(t("wish_text_notes"), notes, "");
     if (wish.links.length) {
-      lines.push("Links:");
+      lines.push(t("wish_text_links"));
       wish.links.forEach(function (l) {
         lines.push("- " + (l.note ? l.note + ": " : "") + l.url);
       });
     }
     if (!lines.length) return "";
-    return ["Wishlist of " + names[me], ""].concat(lines).join("\n").trim();
+    return [t("wish_text_title", { name: names[me] }), ""].concat(lines).join("\n").trim();
   }
 
   function onCopyWish() {
     var message = $("copy-msg");
     var text = wishAsText();
-    message.className = "msg";
     if (!text) {
-      message.classList.add("error");
-      showMessage(message, "Your wishlist is still empty.");
+      message.className = "msg error";
+      setMessage(message, "copy_empty");
       return;
     }
     Core.copyText(text).then(function () {
       message.className = "msg ok";
-      showMessage(message, "Copied. You can now paste it into a message.");
+      setMessage(message, "copy_ok");
     }, function () {
       message.className = "msg error";
-      showMessage(message, "Copying did not work on this device.");
+      setMessage(message, "copy_fail");
     });
+  }
+
+  /* ------------------------------------------------------------- Language */
+
+  function onLanguageChanged() {
+    ["name-msg", "link-msg", "copy-msg", "notes-status"].forEach(function (id) {
+      retranslateMessage($(id));
+    });
+    renderResult();
+    if (me >= 0) renderLinks();
   }
 
   /* ---------------------------------------------------------------- Start */
 
   function init() {
+    I18n.init();
+    I18n.onChange(onLanguageChanged);
+
     if (!readDraw()) {
       show("error");
       return;
     }
     $("name-form").addEventListener("submit", onNameSubmit);
     $("name-input").addEventListener("input", function () {
-      hideMessage($("name-msg"));
+      clearMessage($("name-msg"));
       renderSuggestions();
     });
     $("confirm-yes").addEventListener("click", onConfirmYes);

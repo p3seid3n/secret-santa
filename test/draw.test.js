@@ -120,7 +120,7 @@ test("draw: fewer than 3 people is refused", () => {
 test("explainImpossible names the stuck person", () => {
   const names = ["A", "B", "C"];
   const notes = Core.explainImpossible(names, [[0, 1], [0, 2]]);
-  assert.ok(notes.some((t) => t.indexOf("A would have nobody") === 0), notes.join(" | "));
+  assert.deepStrictEqual(notes, [{ type: "giver", name: "A" }]);
 });
 
 test("draw: nobody is favoured (4 people, 6000 draws)", () => {

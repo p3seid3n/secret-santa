@@ -83,6 +83,28 @@ textarea {
   outline-offset: 3px;
 }
 
+/* Language button, top right */
+.top-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.lang-toggle {
+  min-height: 3rem;
+  padding: 0.4rem 1rem;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: #ffffff;
+  border: 3px solid var(--line);
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.lang-toggle:hover { background: #f1e9de; }
+
 /* Buttons: always full width and at least 60px tall */
 .btn {
   display: block;

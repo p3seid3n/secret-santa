@@ -6,6 +6,8 @@
   "use strict";
 
   var Core = window.SantaCore;
+  var I18n = window.I18n;
+  var t = I18n.t;
   var STORAGE_KEY = "santa-host-v1";
   var $ = function (id) { return document.getElementById(id); };
 
@@ -38,12 +40,24 @@
     return Core.parseNames($("names").value).names;
   }
 
-  function showMessage(el, text) {
-    el.textContent = text;
+  // Messages remember their text key, so they switch language together with the page.
+  // vars may be a function when the values themselves depend on the language.
+  function setMessage(el, key, vars) {
+    el._key = key;
+    el._vars = vars || null;
+    renderMessage(el);
     el.hidden = false;
   }
 
-  function hideMessage(el) {
+  function renderMessage(el) {
+    if (!el._key) return;
+    var vars = typeof el._vars === "function" ? el._vars() : el._vars;
+    el.textContent = t(el._key, vars);
+  }
+
+  function clearMessage(el) {
+    el._key = null;
+    el._vars = null;
     el.textContent = "";
     el.hidden = true;
   }
@@ -54,10 +68,10 @@
     var parsed = Core.parseNames($("names").value);
     var n = parsed.names.length;
     var text = "";
-    if (n > 0) text = n + (n === 1 ? " person" : " people");
-    if (n > 0 && n < 3) text += " – at least 3 are needed";
+    if (n > 0) text = t(n === 1 ? "count_one" : "count_other", { n: n });
+    if (n > 0 && n < 3) text += t("count_need");
     if (parsed.duplicates.length) {
-      text += (text ? ". " : "") + "Twice in the list: " + parsed.duplicates.join(", ") + ". Please make them different.";
+      text += (text ? ". " : "") + t("count_dupes", { names: parsed.duplicates.join(", ") });
     }
     $("names-count").textContent = text;
     $("names-count").className = parsed.duplicates.length ? "hint warn" : "hint";
@@ -68,7 +82,7 @@
     select.textContent = "";
     var first = document.createElement("option");
     first.value = "";
-    first.textContent = "Choose a name…";
+    first.textContent = t("choose_name");
     select.appendChild(first);
     names.forEach(function (name) {
       var option = document.createElement("option");
@@ -79,9 +93,7 @@
     select.value = names.indexOf(previous) === -1 ? "" : previous;
   }
 
-  function onNamesChanged() {
-    state.names = $("names").value;
-    saveState();
+  function refreshNameDependentParts() {
     updateNamesInfo();
     var names = currentNames();
     fillSelect($("rule-a"), names);
@@ -89,12 +101,18 @@
     renderRules();
   }
 
+  function onNamesChanged() {
+    state.names = $("names").value;
+    saveState();
+    refreshNameDependentParts();
+  }
+
   /* -------------------------------------------------------------- 2. Rules */
 
   function ruleText(rule) {
     return rule.both
-      ? rule.a + " and " + rule.b + " should not give to each other."
-      : rule.a + " should not give a gift to " + rule.b + ".";
+      ? t("rule_both_text", { a: rule.a, b: rule.b })
+      : t("rule_one_text", { a: rule.a, b: rule.b });
   }
 
   function renderRules() {
@@ -114,15 +132,14 @@
       if (missing.length) {
         var warn = document.createElement("p");
         warn.className = "hint warn";
-        warn.textContent = "Not in the list of names anymore: " + missing.join(", ") +
-          ". Please remove this rule or correct the name.";
+        warn.textContent = t("rule_missing", { names: missing.join(", ") });
         li.appendChild(warn);
       }
 
       var remove = document.createElement("button");
       remove.type = "button";
       remove.className = "btn secondary small";
-      remove.textContent = "Remove this rule";
+      remove.textContent = t("rule_remove");
       remove.addEventListener("click", function () {
         state.rules.splice(index, 1);
         saveState();
@@ -136,18 +153,18 @@
 
   function onAddRule() {
     var message = $("rule-msg");
-    hideMessage(message);
+    clearMessage(message);
 
     var a = $("rule-a").value;
     var b = $("rule-b").value;
     var both = $("rule-both").checked;
 
     if (!a || !b) {
-      showMessage(message, "Please choose a name in both boxes.");
+      setMessage(message, "rule_pick_both");
       return;
     }
     if (a === b) {
-      showMessage(message, "Please choose two different people.");
+      setMessage(message, "rule_same");
       return;
     }
     var exists = state.rules.some(function (r) {
@@ -155,7 +172,7 @@
              (both && r.both && r.a === b && r.b === a);
     });
     if (exists) {
-      showMessage(message, "This rule is already in the list.");
+      setMessage(message, "rule_exists");
       return;
     }
 
@@ -171,24 +188,33 @@
   function showLink(link) {
     $("link-out").value = link;
     $("open-link").href = link;
-    hideMessage($("copy-msg"));
+    clearMessage($("copy-msg"));
     $("result").hidden = false;
+  }
+
+  function impossibleHints(names, forbidden) {
+    return function () {
+      return {
+        hints: Core.explainImpossible(names, forbidden).map(function (h) {
+          return t(h.type === "giver" ? "hint_giver" : "hint_receiver", { name: h.name });
+        }).join(" ")
+      };
+    };
   }
 
   function onDraw() {
     var message = $("draw-msg");
-    hideMessage(message);
+    clearMessage(message);
 
     var parsed = Core.parseNames($("names").value);
     var names = parsed.names;
 
     if (parsed.duplicates.length) {
-      showMessage(message, "Some names are in the list twice: " + parsed.duplicates.join(", ") +
-        ". Please make each name different, for example by adding an initial.");
+      setMessage(message, "draw_dupes", { names: parsed.duplicates.join(", ") });
       return;
     }
     if (names.length < 3) {
-      showMessage(message, "Please enter at least 3 names.");
+      setMessage(message, "draw_few");
       return;
     }
 
@@ -202,22 +228,21 @@
       if (rule.both) forbidden.push([b, a]);
     });
     if (broken) {
-      showMessage(message, "One of your rules uses a name that is not in the list anymore. Please fix or remove it first.");
+      setMessage(message, "draw_broken_rule");
       return;
     }
 
-    if (state.link && !window.confirm("You already created a link. Draw again and create a new one?")) {
+    if (state.link && !window.confirm(t("draw_again_confirm"))) {
       return;
     }
 
     var result = Core.draw(names, forbidden);
     if (!result.ok) {
-      var hints = Core.explainImpossible(names, forbidden).join(" ");
-      showMessage(message, "With these rules, not everybody can be matched. Please remove a rule. " + hints);
+      setMessage(message, "draw_impossible", impossibleHints(names, forbidden));
       return;
     }
     if (!Core.verify(names.length, forbidden, result.assignment)) {
-      showMessage(message, "Something went wrong. Please press the button again.");
+      setMessage(message, "draw_error");
       return;
     }
 
@@ -232,28 +257,37 @@
     var message = $("copy-msg");
     Core.copyText($("link-out").value).then(function () {
       message.className = "msg ok";
-      showMessage(message, "Copied. Now paste it into your message.");
+      setMessage(message, "host_copy_ok");
     }, function () {
       $("link-out").select();
       message.className = "msg error";
-      showMessage(message, "Copying did not work. The link is selected, please copy it by hand.");
+      setMessage(message, "host_copy_fail");
     });
   }
 
   function onReset() {
-    if (!window.confirm("Delete all names, rules and the link?")) return;
+    if (!window.confirm(t("reset_confirm"))) return;
     state = { names: "", rules: [], link: "" };
     saveState();
     $("names").value = "";
     $("result").hidden = true;
-    hideMessage($("draw-msg"));
-    hideMessage($("rule-msg"));
+    clearMessage($("draw-msg"));
+    clearMessage($("rule-msg"));
     onNamesChanged();
+  }
+
+  /* ------------------------------------------------------------- Language */
+
+  function onLanguageChanged() {
+    refreshNameDependentParts();
+    ["rule-msg", "draw-msg", "copy-msg"].forEach(function (id) { renderMessage($(id)); });
   }
 
   /* ----------------------------------------------------------------- Start */
 
   function init() {
+    I18n.init();
+    I18n.onChange(onLanguageChanged);
     loadState();
     $("names").value = state.names;
     $("names").addEventListener("input", onNamesChanged);
@@ -262,7 +296,7 @@
     $("copy-link").addEventListener("click", onCopyLink);
     $("link-out").addEventListener("focus", function () { this.select(); });
     $("reset").addEventListener("click", onReset);
-    onNamesChanged();
+    refreshNameDependentParts();
     if (state.link) showLink(state.link);
   }
 

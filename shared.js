@@ -183,7 +183,10 @@
     return !(forbiddenPairs || []).some(function (p) { return assignment[p[0]] === p[1]; });
   }
 
-  // Plain-language hints when the rules leave no solution.
+  // Hints for when the rules leave no solution. The page turns these into
+  // sentences in the chosen language:
+  //   { type: "giver", name }    this person would have nobody left to give to
+  //   { type: "receiver", name } nobody would be allowed to give to this person
   function explainImpossible(names, forbiddenPairs) {
     var n = names.length;
     var can = range(n).map(function (g) {
@@ -192,12 +195,12 @@
     forbiddenPairs.forEach(function (p) { can[p[0]][p[1]] = false; });
     var notes = [];
     for (var g = 0; g < n; g++) {
-      if (!can[g].some(Boolean)) notes.push(names[g] + " would have nobody left to give a gift to.");
+      if (!can[g].some(Boolean)) notes.push({ type: "giver", name: names[g] });
     }
     for (var r = 0; r < n; r++) {
       var anyone = false;
       for (var k = 0; k < n; k++) if (can[k][r]) anyone = true;
-      if (!anyone) notes.push("Nobody would be allowed to give a gift to " + names[r] + ".");
+      if (!anyone) notes.push({ type: "receiver", name: names[r] });
     }
     return notes;
   }
