@@ -48,7 +48,7 @@ function usedKeys() {
   const keys = new Set();
   files.forEach(([file, text]) => {
     let m;
-    const attr = /data-(?:i18n|title-key)="([a-z_]+)"/g;
+    const attr = /data-(?:i18n|i18n-placeholder|title-key)="([a-z_]+)"/g;
     while ((m = attr.exec(text))) keys.add(m[1]);
     if (file.endsWith(".js") && file !== "i18n.js") {
       const call = /\bt\("([a-z_]+)"/g;

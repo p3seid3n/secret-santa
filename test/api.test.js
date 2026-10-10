@@ -168,7 +168,7 @@ test("saved wishlists are cleaned on the server (no javascript: links, size limi
   ];
   for (let i = 0; i < 40; i++) links.push({ url: "https://shop.example.com/" + i });
   const res = await call(deps, { action: "save", id, index: 0, notes: "z".repeat(5000), links });
-  assert.strictEqual(res.body.notes.length, 2000);
+  assert.strictEqual(res.body.notes.length, 4000);
   assert.strictEqual(res.body.links.length, 30);
   assert.strictEqual(res.body.links[0].url, "http://ok.example.com/a");
   assert.strictEqual(res.body.links[0].note.length, 200);

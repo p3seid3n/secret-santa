@@ -140,7 +140,7 @@
 
       var remove = document.createElement("button");
       remove.type = "button";
-      remove.className = "btn secondary small";
+      remove.className = "btn tonal small";
       remove.textContent = t("rule_remove");
       remove.addEventListener("click", function () {
         state.rules.splice(index, 1);

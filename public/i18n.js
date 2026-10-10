@@ -27,15 +27,15 @@
       /* Guest: loading and connection problems */
       loading: "Cargando…",
       offline_title: "No hay conexión con el servidor",
-      offline_text: "Comprueba tu conexión a internet e inténtalo de nuevo.",
+      offline_text: "Revisa tu conexión e inténtalo de nuevo.",
       retry: "Intentar de nuevo",
 
       /* Guest: name */
-      name_label: "Escribe tu nombre",
+      name_label: "Tu nombre",
       next: "Siguiente",
-      name_empty: "Por favor, escribe primero tu nombre.",
-      name_not_found: "No encuentro ese nombre. Revisa cómo está escrito e inténtalo de nuevo.",
-      name_pick: "Toca tu nombre en la lista de abajo.",
+      name_empty: "Escribe tu nombre.",
+      name_not_found: "No encuentro ese nombre.",
+      name_pick: "Toca tu nombre abajo.",
 
       /* Guest: confirm */
       confirm_title: "¿Eres tú?",
@@ -44,47 +44,34 @@
 
       /* Guest: result */
       hello: "¡Hola, {name}!",
-      gift_to: "Tienes que hacer un regalo a:",
-      keep_secret: "Por favor, mantenlo en secreto.",
-      done: "He terminado – ocultar esta pantalla",
+      gift_to: "Tu regalo es para",
+      done: "Ocultar pantalla",
       open_people: "Listas de deseos",
       open_mine: "Mi lista de deseos",
 
       /* Guest: everybody's wishlists */
       people_title: "Listas de deseos",
-      people_hint: "Toca un nombre para ver su lista de deseos.",
-      people_yours: "Tu regalo es para esta persona",
-      people_nothing: "Todavía no hay nada",
+      people_yours: "Tu regalo",
+      people_nothing: "Vacía",
       person_title: "Lista de deseos de {name}",
-      person_empty: "{name} todavía no ha escrito nada.",
-      notes_title: "Notas e ideas",
-      links_title: "Enlaces",
+      person_empty: "Todavía no hay nada.",
       back: "Volver",
 
       /* Guest: my wishlist */
       wish_title: "Mi lista de deseos",
-      wish_hint: "Todos los participantes pueden leer tu lista de deseos.",
+      wish_placeholder: "Ideas y enlaces: escribe o pega aquí",
       status_saving: "Guardando…",
       status_saved: "Guardado.",
       status_save_error: "No se pudo guardar. Comprueba tu conexión a internet.",
-      link_label: "Pega un enlace",
-      link_note_label: "Nota corta (opcional)",
-      link_add: "Añadir este enlace",
-      link_bad: "Eso no parece una dirección web. Pega el enlace otra vez, por ejemplo www.tienda.com/articulo.",
-      link_limit: "Ya hay 30 enlaces. Quita alguno primero.",
-      remove: "Quitar",
-      remove_aria: "Quitar {label}",
-      remove_confirm: "¿Quitar este enlace de tu lista de deseos?",
 
       /* Guest: broken link */
       error_title: "Este enlace no funciona",
-      error_text: "El enlace parece estar incompleto. Pide a la persona que organiza el Secret Santa que te lo envíe otra vez.",
+      error_text: "El enlace está incompleto. Pide otro al organizador.",
 
       /* Host */
       host_title: "Secret Santa – organizador",
-      host_intro: "Esta página es solo para ti. Tus invitados solo reciben el enlace que creas al final.",
       h_names: "1. ¿Quién participa?",
-      names_label: "Un nombre por línea, mínimo 3 personas. Si dos personas se llaman igual, añade una inicial, por ejemplo “Ana M.” y “Ana K.”",
+      names_label: "Un nombre por línea (mínimo 3)",
       count_one: "{n} persona",
       count_other: "{n} personas",
       count_need: " – hacen falta al menos 3",
@@ -120,7 +107,7 @@
       hint_giver: "{name} se quedaría sin nadie a quien regalar.",
       hint_receiver: "Nadie podría hacerle un regalo a {name}.",
       result_title: "Tu enlace",
-      result_text: "Envía este enlace a todas las personas que participan. Cada una lo abre, escribe su nombre, ve a quién le toca regalar y puede leer las listas de deseos.",
+      result_text: "Envía este enlace a todos los participantes.",
       link_for_guests: "Enlace para tus invitados",
       copy_link: "Copiar enlace",
       open_guest: "Abrir la página de los invitados",
@@ -140,57 +127,44 @@
 
       loading: "Loading…",
       offline_title: "Cannot reach the server",
-      offline_text: "Please check your internet connection and try again.",
+      offline_text: "Check your connection and try again.",
       retry: "Try again",
 
-      name_label: "Please type your name",
+      name_label: "Your name",
       next: "Next",
-      name_empty: "Please type your name first.",
-      name_not_found: "I cannot find that name. Please check the spelling and try again.",
-      name_pick: "Please tap your name in the list below.",
+      name_empty: "Type your name.",
+      name_not_found: "I cannot find that name.",
+      name_pick: "Tap your name below.",
 
       confirm_title: "Is this you?",
       confirm_yes: "Yes, that is me",
       confirm_no: "No, go back",
 
       hello: "Hello {name}!",
-      gift_to: "You will give a gift to:",
-      keep_secret: "Please keep it a secret.",
-      done: "I am done – hide this screen",
+      gift_to: "You give a gift to",
+      done: "Hide screen",
       open_people: "Wishlists",
       open_mine: "My wishlist",
 
       people_title: "Wishlists",
-      people_hint: "Tap a name to see their wishlist.",
-      people_yours: "You give a gift to this person",
-      people_nothing: "Nothing yet",
+      people_yours: "Your gift",
+      people_nothing: "Empty",
       person_title: "Wishlist of {name}",
-      person_empty: "{name} has not written anything yet.",
-      notes_title: "Notes and ideas",
-      links_title: "Links",
+      person_empty: "Nothing yet.",
       back: "Back",
 
       wish_title: "My wishlist",
-      wish_hint: "Everyone taking part can read your wishlist.",
+      wish_placeholder: "Ideas and links: type or paste here",
       status_saving: "Saving…",
       status_saved: "Saved.",
       status_save_error: "Could not save. Please check your internet connection.",
-      link_label: "Paste a link",
-      link_note_label: "Short note (optional)",
-      link_add: "Add this link",
-      link_bad: "That does not look like a web address. Please paste the link again, for example www.shop.com/item.",
-      link_limit: "You already have 30 links. Please remove one first.",
-      remove: "Remove",
-      remove_aria: "Remove {label}",
-      remove_confirm: "Remove this link from your wishlist?",
 
       error_title: "This link does not work",
-      error_text: "The link seems to be incomplete. Please ask the person who organises the Secret Santa to send it to you again.",
+      error_text: "The link is incomplete. Ask the host for a new one.",
 
       host_title: "Secret Santa – host",
-      host_intro: "This page is only for you. Your guests only receive the link you create at the end.",
       h_names: "1. Who is taking part?",
-      names_label: "One name per line, at least 3 people. If two people share a name, add an initial, for example “Anna M.” and “Anna K.”",
+      names_label: "One name per line (at least 3)",
       count_one: "{n} person",
       count_other: "{n} people",
       count_need: " – at least 3 are needed",
@@ -226,7 +200,7 @@
       hint_giver: "{name} would have nobody left to give a gift to.",
       hint_receiver: "Nobody would be allowed to give a gift to {name}.",
       result_title: "Your link",
-      result_text: "Send this link to everyone who takes part. Each person opens it, types their own name, sees who they give a gift to and can read the wishlists.",
+      result_text: "Send this link to everyone taking part.",
       link_for_guests: "Link for your guests",
       copy_link: "Copy link",
       open_guest: "Open the guest page",
@@ -265,6 +239,11 @@
     var nodes = document.querySelectorAll("[data-i18n]");
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].textContent = t(nodes[i].getAttribute("data-i18n"));
+    }
+
+    var holders = document.querySelectorAll("[data-i18n-placeholder]");
+    for (var h = 0; h < holders.length; h++) {
+      holders[h].setAttribute("placeholder", t(holders[h].getAttribute("data-i18n-placeholder")));
     }
 
     var button = document.getElementById("lang-toggle");

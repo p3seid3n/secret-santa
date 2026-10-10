@@ -20,7 +20,7 @@
   var pending = -1;         // the person waiting for "Yes, that is me"
   var recipientIndex = -1;  // who "me" gives a gift to
   var people = [];          // everybody's wishlist, as last loaded from the server
-  var wish = { notes: "", links: [] };   // my own wishlist while editing
+  var wishNotes = "";       // my own wishlist text while editing
   var currentScreen = "";
   var currentPerson = -1;
   var retryAction = null;
@@ -112,7 +112,7 @@
       var li = document.createElement("li");
       var btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "btn secondary";
+      btn.className = "btn tonal";
       btn.textContent = names[index];
       btn.addEventListener("click", function () { askToConfirm(index); });
       li.appendChild(btn);
@@ -182,7 +182,7 @@
     pending = -1;
     recipientIndex = -1;
     people = [];
-    wish = { notes: "", links: [] };
+    wishNotes = "";
     $("name-input").value = "";
     $("suggestions").textContent = "";
     clearMessage($("name-msg"));
@@ -194,7 +194,7 @@
   /* ------------------------------------- 4a. Everybody's wishlists: names */
 
   function isEmpty(person) {
-    return !person.notes.trim() && !person.links.length;
+    return !Core.wishText(person).trim();
   }
 
   function renderPeople() {
@@ -211,7 +211,7 @@
       var li = document.createElement("li");
       var btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "btn secondary";
+      btn.className = person.index === recipientIndex ? "btn mine-pick" : "btn tonal";
 
       var main = document.createElement("span");
       main.textContent = person.name;
@@ -244,71 +244,41 @@
 
   /* ---------------------------------------- 4b. One wishlist, read only */
 
-  function renderLinkList(list, links, withRemove) {
-    list.textContent = "";
-    links.forEach(function (link, index) {
-      var label = link.note || Core.hostName(link.url);
-
-      var li = document.createElement("li");
-      li.className = "item";
-
-      var p = document.createElement("p");
-      var a = document.createElement("a");
-      a.href = link.url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = label;
-      p.appendChild(a);
-      li.appendChild(p);
-
-      if (link.note) {
-        var site = document.createElement("p");
-        site.className = "hint";
-        site.textContent = Core.hostName(link.url);
-        li.appendChild(site);
-      }
-
-      if (withRemove) {
-        var remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "btn secondary small";
-        remove.textContent = t("remove");
-        remove.setAttribute("aria-label", t("remove_aria", { label: label }));
-        remove.addEventListener("click", function () {
-          if (window.confirm(t("remove_confirm"))) {
-            wish.links.splice(index, 1);
-            renderLinkList($("link-list"), wish.links, true);
-            queueSave();
-          }
-        });
-        li.appendChild(remove);
-      }
-
-      list.appendChild(li);
-    });
-  }
-
   function openPerson(index) {
     currentPerson = index;
     renderPerson();
     show("person");
   }
 
+  // Text with web addresses turned into links (only http/https, see Core.linkify).
+  function fillWishText(box, text) {
+    box.textContent = "";
+    Core.linkify(text).forEach(function (part) {
+      if (part.url) {
+        var a = document.createElement("a");
+        a.href = part.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = part.text;
+        box.appendChild(a);
+      } else {
+        box.appendChild(document.createTextNode(part.text));
+      }
+    });
+  }
+
   function renderPerson() {
     var person = people[currentPerson];
     if (!person) return;
     $("person-title").textContent = t("person_title", { name: person.name });
+    $("person-yours").hidden = person.index !== recipientIndex;
 
-    var empty = isEmpty(person);
+    var text = Core.wishText(person);
+    var empty = !text.trim();
     $("person-empty").hidden = !empty;
     $("person-empty").textContent = empty ? t("person_empty", { name: person.name }) : "";
-
-    var hasNotes = !!person.notes.trim();
-    $("person-notes-box").hidden = !hasNotes;
-    $("person-notes").textContent = person.notes;
-
-    $("person-links-box").hidden = !person.links.length;
-    renderLinkList($("person-links"), person.links, false);
+    $("person-text").hidden = empty;
+    fillWishText($("person-text"), text);
   }
 
   /* ---------------------------------------- 4c. My wishlist (editable) */
@@ -326,7 +296,7 @@
   function queueSave() {
     clearTimeout(saveTimer);
     saveTimer = null;
-    pendingSave = { index: me, notes: wish.notes, links: wish.links.slice() };
+    pendingSave = { index: me, notes: wishNotes };
     setStatus("status_saving");
     pump();
   }
@@ -336,7 +306,7 @@
     var job = pendingSave;
     pendingSave = null;
     sending = true;
-    Api.call("save", { id: eventId, index: job.index, notes: job.notes, links: job.links }).then(function (answer) {
+    Api.call("save", { id: eventId, index: job.index, notes: job.notes, links: [] }).then(function (answer) {
       sending = false;
       if (!answer.ok) {
         setStatus("status_save_error");
@@ -359,46 +329,20 @@
   function openMine() {
     run(function () {
       return fetchPeople().then(function () {
-        var mine = people[me];
-        wish = { notes: mine.notes, links: mine.links.slice() };
-        $("notes").value = wish.notes;
-        $("link-url").value = "";
-        $("link-note").value = "";
-        clearMessage($("link-msg"));
+        wishNotes = Core.wishText(people[me]);
+        $("notes").value = wishNotes;
         clearMessage($("save-status"));
         $("save-status").hidden = false;
-        renderLinkList($("link-list"), wish.links, true);
         show("mine");
       });
     });
   }
 
   function onNotesInput() {
-    wish.notes = $("notes").value;
+    wishNotes = $("notes").value;
     setStatus("status_saving");
     clearTimeout(saveTimer);
     saveTimer = setTimeout(queueSave, 700);
-  }
-
-  function onLinkSubmit(event) {
-    event.preventDefault();
-    var message = $("link-msg");
-    clearMessage(message);
-
-    var url = Core.cleanUrl($("link-url").value);
-    if (!url) {
-      setMessage(message, "link_bad");
-      return;
-    }
-    if (wish.links.length >= Core.LIMITS.links) {
-      setMessage(message, "link_limit");
-      return;
-    }
-    wish.links.push({ url: url, note: $("link-note").value.trim().slice(0, Core.LIMITS.noteText) });
-    $("link-url").value = "";
-    $("link-note").value = "";
-    renderLinkList($("link-list"), wish.links, true);
-    queueSave();
   }
 
   function leaveMine() {
@@ -409,11 +353,10 @@
   /* ------------------------------------------------------------- Language */
 
   function onLanguageChanged() {
-    ["name-msg", "link-msg", "save-status"].forEach(function (id) { retranslateMessage($(id)); });
+    ["name-msg", "save-status"].forEach(function (id) { retranslateMessage($(id)); });
     renderResult();
     if (currentScreen === "people") renderPeople();
     if (currentScreen === "person") renderPerson();
-    if (currentScreen === "mine") renderLinkList($("link-list"), wish.links, true);
   }
 
   /* ---------------------------------------------------------------- Start */
@@ -442,7 +385,6 @@
     $("person-back").addEventListener("click", function () { show("people"); });
     $("mine-back").addEventListener("click", leaveMine);
     $("notes").addEventListener("input", onNotesInput);
-    $("link-form").addEventListener("submit", onLinkSubmit);
     $("retry").addEventListener("click", function () { if (retryAction) retryAction(); });
     window.addEventListener("pagehide", flushPendingNotes);
 

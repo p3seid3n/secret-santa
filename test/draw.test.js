@@ -157,5 +157,17 @@ test("sanitizeWish keeps good data and drops the rest", () => {
   assert.deepStrictEqual(Core.sanitizeWish({ notes: 5, links: "x" }), { notes: "", links: [] });
 });
 
+test("linkify turns web addresses into links and nothing else", () => {
+  const parts = Core.linkify("Socks\nsee www.shop.example/a, or http://x.example/b.\nthanks javascript:alert(1)");
+  const links = parts.filter((p) => p.url).map((p) => p.url);
+  assert.deepStrictEqual(links, ["https://www.shop.example/a", "http://x.example/b"]);
+  assert.strictEqual(parts.map((p) => p.text).join(""), "Socks\nsee www.shop.example/a, or http://x.example/b.\nthanks javascript:alert(1)");
+});
+
+test("wishText folds old separate links into the text", () => {
+  assert.strictEqual(Core.wishText({ notes: "Socks", links: [{ url: "https://a.example/x", note: "Lamp" }] }), "Socks\n\nLamp\nhttps://a.example/x");
+  assert.strictEqual(Core.wishText({ notes: "", links: [] }), "");
+});
+
 console.log(failed ? "\n" + failed + " test(s) failed" : "\nAll tests passed");
 process.exit(failed ? 1 : 0);

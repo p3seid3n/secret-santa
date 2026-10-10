@@ -208,7 +208,7 @@
   /* ------------------------------------------------------------- Wishlist */
 
   // Limits are enforced by the server too. The browser only uses them to stay friendly.
-  var LIMITS = { notes: 2000, noteText: 200, url: 1000, links: 30 };
+  var LIMITS = { notes: 4000, noteText: 200, url: 1000, links: 30 };
 
   // Only normal web links are accepted (never "javascript:" and similar).
   // "www.shop.com/x" becomes "https://www.shop.com/x". Returns null if unusable.
@@ -244,6 +244,40 @@
       links.push({ url: url, note: note });
     });
     return { notes: notes, links: links };
+  }
+
+  // The wishlist is one free text. Older wishlists also had a separate list of links;
+  // wishText() folds those into the text (one per line, below the notes).
+  function wishText(wish) {
+    var text = wish && typeof wish.notes === "string" ? wish.notes : "";
+    var extra = [];
+    ((wish && wish.links) || []).forEach(function (link) {
+      extra.push((link.note ? link.note + "\n" : "") + link.url);
+    });
+    if (!extra.length) return text;
+    return (text.trim() ? text.replace(/\s+$/, "") + "\n\n" : "") + extra.join("\n");
+  }
+
+  // Cuts a text into parts so that web addresses can become links:
+  //   [{ text: "Warm socks " }, { text: "www.shop.com/a", url: "https://www.shop.com/a" }, ...]
+  // Only addresses that cleanUrl accepts get a url, so nothing else can become a link.
+  function linkify(text) {
+    var parts = [];
+    var rest = String(text);
+    var re = /(?:https?:\/\/|www\.)[^\s<>"]+/gi;
+    var last = 0;
+    var m;
+    while ((m = re.exec(rest)) !== null) {
+      var raw = m[0].replace(/[.,;:!?)\]]+$/, "");
+      var url = cleanUrl(raw);
+      if (!url) continue;
+      if (m.index > last) parts.push({ text: rest.slice(last, m.index) });
+      parts.push({ text: raw, url: url });
+      last = m.index + raw.length;
+      re.lastIndex = last;
+    }
+    if (last < rest.length) parts.push({ text: rest.slice(last) });
+    return parts;
   }
 
   /* ------------------------------------------------------------ Clipboard */
@@ -282,6 +316,8 @@
     cleanUrl: cleanUrl,
     hostName: hostName,
     sanitizeWish: sanitizeWish,
+    wishText: wishText,
+    linkify: linkify,
     copyText: copyText
   };
 });

@@ -51,65 +51,43 @@
     <h1 tabindex="-1" data-i18n="confirm_title">¿Eres tú?</h1>
     <p class="big-name" id="confirm-name"></p>
     <button class="btn" id="confirm-yes" type="button" data-i18n="confirm_yes">Sí, soy yo</button>
-    <button class="btn secondary" id="confirm-no" type="button" data-i18n="confirm_no">No, volver</button>
+    <button class="btn tonal" id="confirm-no" type="button" data-i18n="confirm_no">No, volver</button>
   </section>
 
   <!-- 3. Your Secret Santa result -->
   <section id="screen-result" hidden>
     <h1 tabindex="-1" id="result-title"></h1>
-    <p data-i18n="gift_to">Tienes que hacer un regalo a:</p>
-    <p class="big-name" id="result-recipient"></p>
-    <p data-i18n="keep_secret">Por favor, mantenlo en secreto.</p>
-    <button class="btn" id="result-done" type="button" data-i18n="done">He terminado – ocultar esta pantalla</button>
-    <button class="btn secondary" id="open-people" type="button" data-i18n="open_people">Listas de deseos</button>
-    <button class="btn secondary" id="open-mine" type="button" data-i18n="open_mine">Mi lista de deseos</button>
+    <div class="hero" aria-live="polite">
+      <p class="hero-label" data-i18n="gift_to">Tu regalo es para</p>
+      <p class="hero-name" id="result-recipient"></p>
+    </div>
+    <button class="btn" id="open-people" type="button" data-i18n="open_people">Listas de deseos</button>
+    <button class="btn tonal" id="open-mine" type="button" data-i18n="open_mine">Mi lista de deseos</button>
+    <button class="btn text" id="result-done" type="button" data-i18n="done">Ocultar pantalla</button>
   </section>
 
   <!-- 4a. Everybody's wishlists: pick a name -->
   <section id="screen-people" hidden>
     <h1 tabindex="-1" data-i18n="people_title">Listas de deseos</h1>
-    <p class="hint" data-i18n="people_hint">Toca un nombre para ver su lista de deseos.</p>
     <ul id="people-list" class="suggestions"></ul>
-    <button class="btn" id="people-back" type="button" data-i18n="back">Volver</button>
+    <button class="btn text" id="people-back" type="button" data-i18n="back">Volver</button>
   </section>
 
   <!-- 4b. One person's wishlist (read only) -->
   <section id="screen-person" hidden>
     <h1 tabindex="-1" id="person-title"></h1>
-    <p id="person-empty"></p>
-    <div id="person-notes-box">
-      <h2 data-i18n="notes_title">Notas e ideas</h2>
-      <p class="notes-view" id="person-notes"></p>
-    </div>
-    <div id="person-links-box">
-      <h2 data-i18n="links_title">Enlaces</h2>
-      <ul id="person-links" class="list"></ul>
-    </div>
-    <button class="btn" id="person-back" type="button" data-i18n="back">Volver</button>
+    <p id="person-yours" class="chip" hidden data-i18n="people_yours">Tu regalo</p>
+    <p id="person-empty" class="hint"></p>
+    <div id="person-text" class="paper"></div>
+    <button class="btn text" id="person-back" type="button" data-i18n="back">Volver</button>
   </section>
 
-  <!-- 4c. My wishlist (editable) -->
+  <!-- 4c. My wishlist (editable): one box for text and links -->
   <section id="screen-mine" hidden>
-    <h1 tabindex="-1" data-i18n="wish_title">Mi lista de deseos</h1>
-    <p class="hint" data-i18n="wish_hint">Todos los participantes pueden leer tu lista de deseos.</p>
-
-    <h2 id="h-notes" data-i18n="notes_title">Notas e ideas</h2>
-    <textarea id="notes" rows="6" maxlength="2000" aria-labelledby="h-notes"></textarea>
+    <h1 tabindex="-1" id="h-mine" data-i18n="wish_title">Mi lista de deseos</h1>
+    <textarea id="notes" rows="12" maxlength="4000" data-i18n-placeholder="wish_placeholder" aria-labelledby="h-mine" aria-describedby="save-status"></textarea>
     <p id="save-status" class="hint" role="status"></p>
-
-    <h2 id="h-links" data-i18n="links_title">Enlaces</h2>
-    <form id="link-form" novalidate>
-      <label for="link-url" data-i18n="link_label">Pega un enlace</label>
-      <input id="link-url" type="url" inputmode="url" autocomplete="off" autocapitalize="off"
-             autocorrect="off" spellcheck="false">
-      <label for="link-note" data-i18n="link_note_label">Nota corta (opcional)</label>
-      <input id="link-note" type="text" autocomplete="off" maxlength="200">
-      <p id="link-msg" class="msg error" role="alert" hidden></p>
-      <button class="btn" type="submit" data-i18n="link_add">Añadir este enlace</button>
-    </form>
-    <ul id="link-list" class="list"></ul>
-
-    <button class="btn spacer" id="mine-back" type="button" data-i18n="back">Volver</button>
+    <button class="btn" id="mine-back" type="button" data-i18n="back">Volver</button>
   </section>
 
   <!-- Broken or missing link -->

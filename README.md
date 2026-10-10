@@ -4,7 +4,10 @@ A very simple Secret Santa website with shared wishlists. Spanish by default, wi
 button to switch to English.
 
 It is designed so that anyone can use it, including people who are not comfortable with
-computers: one question per screen, big text, big buttons, plain words.
+computers: one question per screen, big text, big buttons, few words. The look follows
+Material You (soft colours, round shapes, calm animations; animations are switched off for
+people who asked their device for reduced motion). The person you give a gift to is shown
+in a large highlighted card and marked in the wishlist list.
 
 ## How it works
 
@@ -24,7 +27,9 @@ take part yourself.
 2. Confirm "Yes, that is me".
 3. See who they give a gift to, then press "I am done" so the screen is hidden again.
 4. Optional: open **Wishlists** to read what the others wrote, or **My wishlist** to write
-   notes and add links. Everyone taking part can read everybody's wishlist.
+   ideas. It is one box: type text and paste links anywhere in it, above and below each
+   other. Web addresses become clickable for the others. Everyone taking part can read
+   everybody's wishlist.
 
 ## Put it online (Vercel + free Redis)
 
@@ -62,7 +67,8 @@ Node 20 or newer, nothing to install.
   works, so only send the link to people taking part.
 - **Pairings stay on the server.** The browser only receives the recipient of the one person
   who confirmed their name. The link contains only a random event number.
-- **Wishlists are public to the group**, notes and links alike.
+- **Wishlists are public to the group.** Older wishlists that had a separate link list are
+  merged into the text the next time their owner opens them.
 - **Host password:** only the host page's "draw" needs it. Wrong guesses are slowed down.
 - **Drawing again** creates a new event with empty wishlists. Old links keep working with
   their old draw.
@@ -82,7 +88,7 @@ Node 20 or newer, nothing to install.
 | `public/shared.js` | Drawing logic, name matching, link cleaning (used by browser and server) |
 | `public/i18n.js` | All texts in Spanish and English, language button |
 | `public/api.js` | Browser side of the server calls |
-| `public/style.css` | Look and feel (large text, high contrast) |
+| `public/style.css` | Look and feel (Material You, large text, high contrast) |
 | `api/santa.js` | The Vercel function |
 | `server/handler.js` | The whole API (create, names, reveal, wishlists, save) |
 | `server/store.js` | Storage: Upstash Redis, or memory for local use |

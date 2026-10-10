@@ -22,7 +22,6 @@
   </div>
 
   <h1 data-i18n="host_title">Secret Santa – organizador</h1>
-  <p class="hint" data-i18n="host_intro">Esta página es solo para ti. Tus invitados solo reciben el enlace que creas al final.</p>
 
   <h2 id="h-names" data-i18n="h_names">1. ¿Quién participa?</h2>
   <label for="names" data-i18n="names_label">Un nombre por línea, mínimo 3 personas. Si dos personas se llaman igual, añade una inicial, por ejemplo “Ana M.” y “Ana K.”</label>
@@ -39,7 +38,7 @@
     <span data-i18n="rule_both">También al revés</span>
   </label>
   <p id="rule-msg" class="msg error" role="alert" hidden></p>
-  <button class="btn secondary" id="add-rule" type="button" data-i18n="rule_add">Añadir esta regla</button>
+  <button class="btn tonal" id="add-rule" type="button" data-i18n="rule_add">Añadir esta regla</button>
   <ul id="rule-list" class="list"></ul>
 
   <h2 id="h-draw" data-i18n="h_draw">3. Sorteo</h2>
@@ -54,12 +53,12 @@
     <label for="link-out" data-i18n="link_for_guests">Enlace para tus invitados</label>
     <input type="text" id="link-out" readonly>
     <button class="btn" id="copy-link" type="button" data-i18n="copy_link">Copiar enlace</button>
-    <a class="btn secondary" id="open-link" href="#" target="_blank" rel="noopener" data-i18n="open_guest">Abrir la página de los invitados</a>
+    <a class="btn tonal" id="open-link" href="#" target="_blank" rel="noopener" data-i18n="open_guest">Abrir la página de los invitados</a>
     <p id="copy-msg" class="msg" role="status" hidden></p>
     <p class="hint" data-i18n="draw_again_hint">Si sorteas otra vez se crea un enlace nuevo. Envía solo el más reciente.</p>
   </section>
 
-  <button class="btn secondary spacer" id="reset" type="button" data-i18n="reset">Empezar de nuevo</button>
+  <button class="btn tonal spacer" id="reset" type="button" data-i18n="reset">Empezar de nuevo</button>
 
 </main>
 <script src="shared.js"></script>
