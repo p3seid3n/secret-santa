@@ -12,9 +12,11 @@
   var t = I18n.t;
   var $ = function (id) { return document.getElementById(id); };
 
-  var SCREENS = ["loading", "offline", "name", "confirm", "code", "result", "people", "person", "mine", "error"];
+  var SCREENS = ["start", "loading", "offline", "name", "confirm", "code", "result", "people", "person", "mine", "error"];
 
+  var LAST_KEY = "santa-last-event";
   var eventId = "";
+  var usedStored = false;   // the link was not in the address, it was remembered from last time
   var names = [];
   var me = -1;              // the person using the page right now
   var pending = -1;         // the person waiting for "Yes, that is me"
@@ -73,6 +75,14 @@
     show("loading");
     return task().catch(function (error) {
       if (error && error.code === "not_found") {
+        if (usedStored) {
+          // The remembered event is gone (expired): start over as if opened without a link.
+          usedStored = false;
+          eventId = "";
+          try { window.localStorage.removeItem(LAST_KEY); } catch (e) { /* ignore */ }
+          show("start");
+          return;
+        }
         show("error");
       } else {
         retryAction = function () { run(task); };
@@ -99,6 +109,7 @@
     return Api.call("names", { id: eventId }).then(function (answer) {
       if (!answer.ok) throw problem(answer);
       names = answer.names;
+      try { window.localStorage.setItem(LAST_KEY, eventId); } catch (e) { /* ignore */ }
       show("name");
     });
   }
@@ -416,7 +427,13 @@
 
     eventId = readEventId();
     if (!eventId) {
-      show("error");
+      // Opened with just the website address: use the link used last time on this device, if any.
+      try { eventId = window.localStorage.getItem(LAST_KEY) || ""; } catch (e) { eventId = ""; }
+      if (!/^[A-Za-z0-9_-]{8,40}$/.test(eventId)) eventId = "";
+      usedStored = !!eventId;
+    }
+    if (!eventId) {
+      show("start");
       return;
     }
 

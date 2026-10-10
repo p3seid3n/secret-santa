@@ -25,6 +25,8 @@
       lang_switch_aria: "Cambiar el idioma a inglés",
 
       /* Guest: loading and connection problems */
+      start_text: "Abre el enlace que te envió el organizador.",
+      start_host: "Soy el organizador",
       loading: "Cargando…",
       offline_title: "No hay conexión con el servidor",
       offline_text: "Revisa tu conexión e inténtalo de nuevo.",
@@ -145,6 +147,8 @@
       lang_other_name: "Español",
       lang_switch_aria: "Change the language to Spanish",
 
+      start_text: "Open the link the host sent you.",
+      start_host: "I am the host",
       loading: "Loading…",
       offline_title: "Cannot reach the server",
       offline_text: "Check your connection and try again.",
