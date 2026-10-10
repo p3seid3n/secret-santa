@@ -32,6 +32,50 @@ async function pairings(deps, id) {
   return out;
 }
 
+test("reshuffle needs the host password and keeps link, wishlists and rules", async () => {
+  const deps = makeDeps();
+  const id = await createEvent(deps, { rules: [{ a: "Tante Rosa", b: "Onkel Hans", both: true }] });
+  await call(deps, { action: "save", id, index: 0, notes: "Socks", links: [] });
+  const before = await pairings(deps, id);
+
+  const wrong = await call(deps, { action: "reshuffle", id, password: "nope" });
+  assert.deepStrictEqual([wrong.status, wrong.body.error], [401, "bad_password"]);
+  assert.deepStrictEqual(await pairings(deps, id), before, "a wrong password changes nothing");
+
+  assert.strictEqual((await call(deps, { action: "reshuffle", id: "abcdefghij", password: ENV.HOST_PASSWORD })).status, 404);
+
+  let changedEverywhere = 0;
+  let previous = before;
+  for (let round = 0; round < 10; round++) {
+    const res = await call(deps, { action: "reshuffle", id, password: ENV.HOST_PASSWORD });
+    assert.deepStrictEqual([res.status, res.body.id], [200, id]);
+    const after = await pairings(deps, id);
+    assert.ok(new Set(Object.values(after)).size === NAMES.length, "everybody receives once");
+    assert.ok(Object.keys(after).every((g) => after[g] !== g));
+    assert.notStrictEqual(after["Tante Rosa"], "Onkel Hans", "rules still apply");
+    assert.notStrictEqual(after["Onkel Hans"], "Tante Rosa", "rules still apply");
+    if (Object.keys(after).every((g) => after[g] !== previous[g])) changedEverywhere++;
+    previous = after;
+  }
+  assert.ok(changedEverywhere >= 5, "usually nobody keeps the previous recipient");
+  const wl = (await call(deps, { action: "wishlists", id })).body.people;
+  assert.strictEqual(wl[0].notes, "Socks", "wishlists stay");
+});
+
+test("reshuffle of an older event takes the rules from the request", async () => {
+  const deps = makeDeps();
+  const id = await createEvent(deps);
+  const key = "santa:event:" + id;
+  const event = JSON.parse(await deps.store.get(key));
+  delete event.forbidden;
+  await deps.store.set(key, JSON.stringify(event));
+  const bad = await call(deps, { action: "reshuffle", id, password: ENV.HOST_PASSWORD, rules: [{ a: "Nobody", b: "Ana Müller" }] });
+  assert.deepStrictEqual([bad.status, bad.body.error], [400, "bad_rule"]);
+  const ok = await call(deps, { action: "reshuffle", id, password: ENV.HOST_PASSWORD, rules: [{ a: "Ana Müller", b: "Peter Meier" }] });
+  assert.strictEqual(ok.status, 200);
+  assert.notStrictEqual((await pairings(deps, id))["Ana Müller"], "Peter Meier");
+});
+
 test("only POST with a known action is accepted", async () => {
   const deps = makeDeps();
   assert.strictEqual((await call(deps, { action: "names" }, "GET")).status, 405);
@@ -167,8 +211,8 @@ test("saved wishlists are cleaned on the server (no javascript: links, size limi
     null
   ];
   for (let i = 0; i < 40; i++) links.push({ url: "https://shop.example.com/" + i });
-  const res = await call(deps, { action: "save", id, index: 0, notes: "z".repeat(5000), links });
-  assert.strictEqual(res.body.notes.length, 4000);
+  const res = await call(deps, { action: "save", id, index: 0, notes: "z".repeat(9000), links });
+  assert.strictEqual(res.body.notes.length, 8000);
   assert.strictEqual(res.body.links.length, 30);
   assert.strictEqual(res.body.links[0].url, "http://ok.example.com/a");
   assert.strictEqual(res.body.links[0].note.length, 200);

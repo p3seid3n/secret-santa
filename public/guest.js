@@ -250,21 +250,16 @@
     show("person");
   }
 
-  // Text with web addresses turned into links (only http/https, see Core.linkify).
-  function fillWishText(box, text) {
-    box.textContent = "";
-    Core.linkify(text).forEach(function (part) {
-      if (part.url) {
-        var a = document.createElement("a");
-        a.href = part.url;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.textContent = part.text;
-        box.appendChild(a);
-      } else {
-        box.appendChild(document.createTextNode(part.text));
-      }
-    });
+  // Link preview cards: the server fetches title, description and picture once and remembers them.
+  var previews = {};
+
+  function attachPreview(card, url) {
+    if (!previews[url]) {
+      previews[url] = Api.call("preview", { id: eventId, url: url }).then(function (answer) {
+        return answer.ok ? answer.preview : null;
+      }, function () { return null; });
+    }
+    previews[url].then(function (preview) { SantaRich.fillCard(card, preview); });
   }
 
   function renderPerson() {
@@ -278,7 +273,7 @@
     $("person-empty").hidden = !empty;
     $("person-empty").textContent = empty ? t("person_empty", { name: person.name }) : "";
     $("person-text").hidden = empty;
-    fillWishText($("person-text"), text);
+    SantaRich.render($("person-text"), text, { editable: false, onCard: attachPreview });
   }
 
   /* ---------------------------------------- 4c. My wishlist (editable) */
@@ -330,7 +325,7 @@
     run(function () {
       return fetchPeople().then(function () {
         wishNotes = Core.wishText(people[me]);
-        $("notes").value = wishNotes;
+        SantaRich.render($("editor"), wishNotes, { editable: true, removeLabel: t("card_remove"), onCard: attachPreview });
         clearMessage($("save-status"));
         $("save-status").hidden = false;
         show("mine");
@@ -338,8 +333,15 @@
     });
   }
 
-  function onNotesInput() {
-    wishNotes = $("notes").value;
+  function onEditorChange() {
+    var text = SantaRich.serialize($("editor"));
+    if (text.length > Core.LIMITS.notes) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      setStatus("wish_too_long");
+      return;
+    }
+    wishNotes = text;
     setStatus("status_saving");
     clearTimeout(saveTimer);
     saveTimer = setTimeout(queueSave, 700);
@@ -357,6 +359,9 @@
     renderResult();
     if (currentScreen === "people") renderPeople();
     if (currentScreen === "person") renderPerson();
+    Array.prototype.forEach.call(document.querySelectorAll("#editor .card-remove"), function (b) {
+      b.textContent = t("card_remove");
+    });
   }
 
   /* ---------------------------------------------------------------- Start */
@@ -384,7 +389,9 @@
     $("people-back").addEventListener("click", function () { show("result"); });
     $("person-back").addEventListener("click", function () { show("people"); });
     $("mine-back").addEventListener("click", leaveMine);
-    $("notes").addEventListener("input", onNotesInput);
+    SantaRich.attachEditor($("editor"), {
+      bold: $("fmt-bold"), italic: $("fmt-italic"), list: $("fmt-list")
+    }, { onChange: onEditorChange, onCard: attachPreview, removeLabel: t("card_remove") });
     $("retry").addEventListener("click", function () { if (retryAction) retryAction(); });
     window.addEventListener("pagehide", flushPendingNotes);
 

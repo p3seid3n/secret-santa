@@ -191,6 +191,7 @@
     $("link-out").value = link;
     $("open-link").href = link;
     clearMessage($("copy-msg"));
+    clearMessage($("reshuffle-msg"));
     $("result").hidden = false;
   }
 
@@ -293,6 +294,42 @@
     });
   }
 
+  // Draws again for the event of the current link: same link, wishlists stay.
+  function onReshuffle() {
+    var message = $("reshuffle-msg");
+    message.className = "msg error";
+    clearMessage(message);
+
+    var match = /[#&]e=([A-Za-z0-9_-]{8,40})/.exec(state.link.slice(state.link.indexOf("#")));
+    if (!match) return;
+    var password = $("host-password").value;
+    if (!password) {
+      setMessage(message, "draw_password_empty");
+      return;
+    }
+    if (!window.confirm(t("reshuffle_confirm"))) return;
+
+    var button = $("reshuffle");
+    button.disabled = true;
+    message.className = "msg";
+    setMessage(message, "draw_working");
+
+    Api.call("reshuffle", { password: password, id: match[1], rules: state.rules }).then(function (answer) {
+      button.disabled = false;
+      if (!answer.ok) {
+        showDrawError(message, answer);
+        return;
+      }
+      try { window.sessionStorage.setItem(PASSWORD_KEY, password); } catch (e) { /* ignore */ }
+      message.className = "msg ok";
+      setMessage(message, "reshuffle_ok");
+    }, function () {
+      button.disabled = false;
+      message.className = "msg error";
+      setMessage(message, "draw_offline");
+    });
+  }
+
   function onReset() {
     if (!window.confirm(t("reset_confirm"))) return;
     state = { names: "", rules: [], link: "" };
@@ -301,6 +338,7 @@
     $("result").hidden = true;
     clearMessage($("draw-msg"));
     clearMessage($("rule-msg"));
+    clearMessage($("reshuffle-msg"));
     onNamesChanged();
   }
 
@@ -308,7 +346,7 @@
 
   function onLanguageChanged() {
     refreshNameDependentParts();
-    ["rule-msg", "draw-msg", "copy-msg"].forEach(function (id) { renderMessage($(id)); });
+    ["rule-msg", "draw-msg", "copy-msg", "reshuffle-msg"].forEach(function (id) { renderMessage($(id)); });
   }
 
   /* ----------------------------------------------------------------- Start */
@@ -324,6 +362,7 @@
     $("draw").addEventListener("click", onDraw);
     $("copy-link").addEventListener("click", onCopyLink);
     $("link-out").addEventListener("focus", function () { this.select(); });
+    $("reshuffle").addEventListener("click", onReshuffle);
     $("reset").addEventListener("click", onReset);
     refreshNameDependentParts();
     if (state.link) showLink(state.link);

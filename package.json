@@ -5,7 +5,7 @@
   "description": "A very simple Secret Santa website with shared wishlists (Vercel + Redis)",
   "scripts": {
     "dev": "node dev-server.js",
-    "test": "node test/draw.test.js && node test/i18n.test.js && node test/api.test.js"
+    "test": "node test/draw.test.js && node test/i18n.test.js && node test/api.test.js && node test/preview.test.js && node test/rich.test.js"
   },
   "engines": {
     "node": ">=20"

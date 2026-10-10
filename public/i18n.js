@@ -60,6 +60,11 @@
       /* Guest: my wishlist */
       wish_title: "Mi lista de deseos",
       wish_placeholder: "Ideas y enlaces: escribe o pega aquí",
+      fmt_bold: "Negrita",
+      fmt_italic: "Cursiva",
+      fmt_list: "Lista",
+      card_remove: "Quitar",
+      wish_too_long: "Demasiado largo. Acorta el texto.",
       status_saving: "Guardando…",
       status_saved: "Guardado.",
       status_save_error: "No se pudo guardar. Comprueba tu conexión a internet.",
@@ -114,6 +119,9 @@
       host_copy_ok: "Copiado. Ahora pégalo en tu mensaje.",
       host_copy_fail: "No se pudo copiar. El enlace está seleccionado, cópialo a mano.",
       draw_again_hint: "Si sorteas otra vez se crea un enlace nuevo. Envía solo el más reciente.",
+      reshuffle_btn: "Mezclar de nuevo",
+      reshuffle_confirm: "¿Mezclar de nuevo? Cada persona recibe otra persona. El enlace y las listas de deseos se mantienen. Quien ya vio su regalo debe mirar otra vez.",
+      reshuffle_ok: "Listo. Todos tienen una persona nueva.",
       reset: "Empezar de nuevo",
       reset_confirm: "¿Borrar todos los nombres, las reglas y el enlace?"
     },
@@ -155,6 +163,11 @@
 
       wish_title: "My wishlist",
       wish_placeholder: "Ideas and links: type or paste here",
+      fmt_bold: "Bold",
+      fmt_italic: "Italic",
+      fmt_list: "List",
+      card_remove: "Remove",
+      wish_too_long: "Too long. Please shorten the text.",
       status_saving: "Saving…",
       status_saved: "Saved.",
       status_save_error: "Could not save. Please check your internet connection.",
@@ -207,6 +220,9 @@
       host_copy_ok: "Copied. Now paste it into your message.",
       host_copy_fail: "Copying did not work. The link is selected, please copy it by hand.",
       draw_again_hint: "Drawing again creates a new link. Only send the newest one.",
+      reshuffle_btn: "Shuffle again",
+      reshuffle_confirm: "Shuffle again? Everyone gets a different person. The link and wishlists stay. Anyone who already looked has to look again.",
+      reshuffle_ok: "Done. Everyone has a new person.",
       reset: "Start over",
       reset_confirm: "Delete all names, rules and the link?"
     }

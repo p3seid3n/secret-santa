@@ -85,7 +85,14 @@
   <!-- 4c. My wishlist (editable): one box for text and links -->
   <section id="screen-mine" hidden>
     <h1 tabindex="-1" id="h-mine" data-i18n="wish_title">Mi lista de deseos</h1>
-    <textarea id="notes" rows="12" maxlength="4000" data-i18n-placeholder="wish_placeholder" aria-labelledby="h-mine" aria-describedby="save-status"></textarea>
+    <div class="toolbar" role="toolbar" aria-controls="editor">
+      <button class="tool" id="fmt-bold" type="button" aria-pressed="false"><b>B</b><span data-i18n="fmt_bold">Negrita</span></button>
+      <button class="tool" id="fmt-italic" type="button" aria-pressed="false"><i>I</i><span data-i18n="fmt_italic">Cursiva</span></button>
+      <button class="tool" id="fmt-list" type="button" aria-pressed="false"><b>•</b><span data-i18n="fmt_list">Lista</span></button>
+    </div>
+    <div id="editor" class="editor is-empty" contenteditable="true" role="textbox" aria-multiline="true"
+         aria-labelledby="h-mine" aria-describedby="save-status" spellcheck="true"
+         data-i18n-placeholder="wish_placeholder"></div>
     <p id="save-status" class="hint" role="status"></p>
     <button class="btn" id="mine-back" type="button" data-i18n="back">Volver</button>
   </section>
@@ -98,6 +105,7 @@
 
 </main>
 <script src="shared.js"></script>
+<script src="rich.js"></script>
 <script src="i18n.js"></script>
 <script src="api.js"></script>
 <script src="guest.js"></script>

@@ -6,9 +6,11 @@
  * Every request is a POST with a JSON body { action, ... }:
  *
  *   create     host only (password)   draw on the server, returns the event id
+ *   reshuffle  host only (password)   draw again for the same event (same link, wishlists stay)
  *   names      anyone with the id     list of names (for autocomplete)
  *   reveal     anyone with the id     who does <index> give a gift to?
  *   wishlists  anyone with the id     everybody's wishlist (notes and links)
+ *   preview    anyone with the id     title, description and picture of a web page
  *   save       anyone with the id     save the wishlist of <index>
  *
  * The pairings never leave the server except one at a time, in "reveal".
@@ -17,6 +19,7 @@
 
 const crypto = require("crypto");
 const Core = require("../public/shared.js");
+const Preview = require("./preview");
 
 const MAX_PEOPLE = 100;
 const MAX_NAME_LENGTH = 60;
@@ -61,15 +64,35 @@ function validIndex(event, index) {
   return Number.isInteger(index) && index >= 0 && index < event.names.length;
 }
 
-/* ------------------------------------------------------------------ create */
-
-async function create(body, deps) {
+// Returns a failure reply when the host password is missing or wrong, otherwise null.
+async function checkHost(body, deps) {
   const expected = deps.env.HOST_PASSWORD;
   if (!expected) return fail(503, "no_password_set");
   if (typeof body.password !== "string" || !passwordMatches(body.password, expected)) {
     await (deps.delay || sleep)(400); // slows down guessing
     return fail(401, "bad_password");
   }
+  return null;
+}
+
+// [{a, b, both}] with names -> forbidden [giver, receiver] index pairs, or null if a rule is broken.
+function rulesToPairs(names, rules) {
+  const forbidden = [];
+  for (const rule of rules) {
+    const a = rule && typeof rule.a === "string" ? names.indexOf(rule.a) : -1;
+    const b = rule && typeof rule.b === "string" ? names.indexOf(rule.b) : -1;
+    if (a === -1 || b === -1 || a === b) return null;
+    forbidden.push([a, b]);
+    if (rule.both) forbidden.push([b, a]);
+  }
+  return forbidden;
+}
+
+/* ------------------------------------------------------------------ create */
+
+async function create(body, deps) {
+  const denied = await checkHost(body, deps);
+  if (denied) return denied;
 
   if (!Array.isArray(body.names) || body.names.some((n) => typeof n !== "string")) {
     return fail(400, "bad_request");
@@ -84,14 +107,8 @@ async function create(body, deps) {
 
   const rules = Array.isArray(body.rules) ? body.rules : [];
   if (rules.length > MAX_RULES) return fail(400, "bad_request");
-  const forbidden = [];
-  for (const rule of rules) {
-    const a = rule && typeof rule.a === "string" ? names.indexOf(rule.a) : -1;
-    const b = rule && typeof rule.b === "string" ? names.indexOf(rule.b) : -1;
-    if (a === -1 || b === -1 || a === b) return fail(400, "bad_rule");
-    forbidden.push([a, b]);
-    if (rule.both) forbidden.push([b, a]);
-  }
+  const forbidden = rulesToPairs(names, rules);
+  if (!forbidden) return fail(400, "bad_rule");
 
   const result = Core.draw(names, forbidden);
   if (!result.ok) {
@@ -102,9 +119,48 @@ async function create(body, deps) {
   }
 
   const id = crypto.randomBytes(9).toString("base64url");
-  const event = { v: 1, names, assignment: result.assignment, createdAt: new Date().toISOString() };
+  const event = { v: 1, names, forbidden, assignment: result.assignment, createdAt: new Date().toISOString() };
   await deps.store.set(eventKey(id), JSON.stringify(event));
   return reply(200, { ok: true, id });
+}
+
+/* --------------------------------------------------------------- reshuffle */
+
+// Draws again for an existing event. The link and all wishlists stay, only the pairings change.
+// The rules from the first draw are reused; events made before rules were stored get them
+// from the request instead.
+async function reshuffle(body, deps) {
+  const denied = await checkHost(body, deps);
+  if (denied) return denied;
+
+  const event = await loadEvent(deps.store, body.id);
+  if (!event) return fail(404, "not_found");
+
+  let forbidden = Array.isArray(event.forbidden) ? event.forbidden : null;
+  if (!forbidden) {
+    forbidden = rulesToPairs(event.names, Array.isArray(body.rules) ? body.rules.slice(0, MAX_RULES) : []);
+    if (!forbidden) return fail(400, "bad_rule");
+  }
+
+  // Prefer a result where nobody keeps the person they had before.
+  let result = null;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const candidate = Core.draw(event.names, forbidden);
+    if (!candidate.ok) {
+      return fail(422, "impossible", { hints: Core.explainImpossible(event.names, forbidden) });
+    }
+    result = candidate;
+    if (candidate.assignment.every((receiver, giver) => receiver !== event.assignment[giver])) break;
+  }
+  if (!Core.verify(event.names.length, forbidden, result.assignment)) return fail(500, "draw_failed");
+
+  const updated = Object.assign({}, event, {
+    forbidden,
+    assignment: result.assignment,
+    reshuffledAt: new Date().toISOString()
+  });
+  await deps.store.set(eventKey(body.id), JSON.stringify(updated));
+  return reply(200, { ok: true, id: body.id });
 }
 
 /* ------------------------------------------------------------------ guests */
@@ -147,9 +203,30 @@ async function save(body, deps) {
   return reply(200, { ok: true, notes: wish.notes, links: wish.links });
 }
 
+/* ----------------------------------------------------------------- preview */
+
+const previewKey = (url) => "santa:preview:" + crypto.createHash("sha1").update(url).digest("hex");
+
+// Answers { ok: true, preview } where preview is null when the page has nothing to show.
+// Good answers are remembered, so a wishlist with many links does not fetch them again each time.
+async function preview(body, deps) {
+  const event = await loadEvent(deps.store, body.id);
+  if (!event) return fail(404, "not_found");
+  const url = typeof body.url === "string" ? Core.cleanUrl(body.url) : null;
+  if (!url) return fail(400, "bad_request");
+
+  const cached = parseJson(await deps.store.get(previewKey(url)));
+  if (cached && typeof cached.url === "string") return reply(200, { ok: true, preview: cached });
+
+  const fetcher = deps.fetchPreview || Preview.fetchPreview;
+  const found = await fetcher(url, { allowPrivate: deps.env.PREVIEW_ALLOW_PRIVATE === "1" });
+  if (found) await deps.store.set(previewKey(url), JSON.stringify(found));
+  return reply(200, { ok: true, preview: found });
+}
+
 /* -------------------------------------------------------------------- main */
 
-const ACTIONS = { create, names, reveal, wishlists, save };
+const ACTIONS = { create, reshuffle, names, reveal, wishlists, save, preview };
 
 async function handle(request, deps) {
   if (request.method !== "POST") return fail(405, "method");

@@ -208,7 +208,7 @@
   /* ------------------------------------------------------------- Wishlist */
 
   // Limits are enforced by the server too. The browser only uses them to stay friendly.
-  var LIMITS = { notes: 4000, noteText: 200, url: 1000, links: 30 };
+  var LIMITS = { notes: 8000, noteText: 200, url: 1000, links: 30 };
 
   // Only normal web links are accepted (never "javascript:" and similar).
   // "www.shop.com/x" becomes "https://www.shop.com/x". Returns null if unusable.

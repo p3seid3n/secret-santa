@@ -26,9 +26,13 @@ take part yourself.
 1. Open the link and start typing their name. The page suggests matching names.
 2. Confirm "Yes, that is me".
 3. See who they give a gift to, then press "I am done" so the screen is hidden again.
-4. Optional: open **Wishlists** to read what the others wrote, or **My wishlist** to write
-   ideas. It is one box: type text and paste links anywhere in it, above and below each
-   other. Web addresses become clickable for the others. Everyone taking part can read
+4. The host page also has **Shuffle again**: it draws new pairings for the same event.
+   The link and everybody's wishlists stay; the rules you set are reused. (Anyone who
+   already looked at their person has to look again.)
+5. Optional: open **Wishlists** to read what the others wrote, or **My wishlist** to write
+   ideas. It is one box with three buttons: bold, italic and a bullet list. Paste a link on
+   its own and it becomes a preview card (picture, title, description) like in a chat app;
+   links inside a sentence stay normal clickable links. Everyone taking part can read
    everybody's wishlist.
 
 ## Put it online (Vercel + free Redis)
@@ -69,6 +73,10 @@ Node 20 or newer, nothing to install.
   who confirmed their name. The link contains only a random event number.
 - **Wishlists are public to the group.** Older wishlists that had a separate link list are
   merged into the text the next time their owner opens them.
+- **Link previews:** the server fetches the linked page to read its title, description and
+  picture. It only talks to public web addresses (internal addresses, odd protocols, big
+  pages and endless redirects are refused). Some shops block such requests, then the card
+  just shows the site name. Pictures are loaded from the shop's own site (`img-src https:`).
 - **Host password:** only the host page's "draw" needs it. Wrong guesses are slowed down.
 - **Drawing again** creates a new event with empty wishlists. Old links keep working with
   their old draw.
@@ -85,6 +93,8 @@ Node 20 or newer, nothing to install.
 | --- | --- |
 | `public/index.html`, `public/guest.js` | The page your guests use |
 | `public/host.html`, `public/host.js` | The page you use to set up and draw |
+| `public/rich.js` | Wishlist formatting (bold, italic, list) and link cards |
+| `server/preview.js` | Fetches link previews safely |
 | `public/shared.js` | Drawing logic, name matching, link cleaning (used by browser and server) |
 | `public/i18n.js` | All texts in Spanish and English, language button |
 | `public/api.js` | Browser side of the server calls |
