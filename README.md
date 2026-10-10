@@ -73,6 +73,11 @@ Node 20 or newer, nothing to install.
   server, and after 5 wrong tries that person is locked for 15 minutes. You can change codes
   later with *Save codes* without drawing again. The codes you type are kept in your own
   browser on the host page so you can read them out to people.
+- **Open address:** on the host page, "Guests get in with just the site address" (on by default)
+  makes the plain website address (for example `https://your-domain/`) open your latest draw,
+  so nobody needs the long link. The trade-off: the long random link is no longer a secret, so
+  anyone who knows the address can pick a name. Give codes to almost everyone. You can switch
+  it on or off later with *Save changes*; a new draw without the box ticked closes it again.
 - **People without a code** work on the honor system: anyone with the link can pick their
   name. Wishlists are readable by everyone who has the link, with or without a code.
 - **Pairings stay on the server.** The browser only receives the recipient of the one person

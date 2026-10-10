@@ -6,7 +6,8 @@
  * Every request is a POST with a JSON body { action, ... }:
  *
  *   create     host only (password)   draw on the server, returns the event id
- *   setcodes   host only (password)   set or change the personal codes
+ *   setcodes   host only (password)   set or change personal codes and the open address
+ *   current    anyone                 the id of the event the bare website address opens (if the host allowed it)
  *   reshuffle  host only (password)   draw again for the same event (same link, wishlists stay)
  *   names      anyone with the id     list of names (for autocomplete)
  *   reveal     the id (+ code if set) who does <index> give a gift to?
@@ -34,6 +35,7 @@ const LOCK_MINUTES = 15;        // ... lock that person for this long
 
 const eventKey = (id) => "santa:event:" + id;
 const lockKey = (id, index) => "santa:lock:" + id + ":" + index;
+const CURRENT_KEY = "santa:current";
 const wishKey = (id, index) => "santa:wish:" + id + ":" + index;
 
 function reply(status, body) {
@@ -195,6 +197,8 @@ async function create(body, deps) {
   const event = { v: 1, names, forbidden, assignment: result.assignment, createdAt: new Date().toISOString() };
   if (built.codes) event.codes = built.codes;
   await deps.store.set(eventKey(id), JSON.stringify(event));
+  // "Open address": the plain website address opens this event (until the next draw says otherwise).
+  await deps.store.set(CURRENT_KEY, body.openAddress === true ? id : "");
   return reply(200, { ok: true, id });
 }
 
@@ -212,6 +216,10 @@ async function setcodes(body, deps) {
   const updated = Object.assign({}, event);
   if (built.codes) updated.codes = built.codes; else delete updated.codes;
   await deps.store.set(eventKey(body.id), JSON.stringify(updated));
+  if (typeof body.openAddress === "boolean") {
+    if (body.openAddress) await deps.store.set(CURRENT_KEY, body.id);
+    else if ((await deps.store.get(CURRENT_KEY)) === body.id) await deps.store.set(CURRENT_KEY, "");
+  }
   // New codes start with a clean slate: nobody stays locked out.
   await Promise.all(event.names.map((_, i) => deps.store.set(lockKey(body.id, i), JSON.stringify({ fails: 0, until: 0 }))));
   return reply(200, { ok: true });
@@ -257,6 +265,14 @@ async function reshuffle(body, deps) {
 }
 
 /* ------------------------------------------------------------------ guests */
+
+// Which event does the plain website address open? Only set when the host allowed it.
+async function current(body, deps) {
+  const id = await deps.store.get(CURRENT_KEY);
+  const event = id ? await loadEvent(deps.store, id) : null;
+  if (!event) return fail(404, "not_found");
+  return reply(200, { ok: true, id });
+}
 
 async function names(body, deps) {
   const event = await loadEvent(deps.store, body.id);
@@ -323,7 +339,7 @@ async function preview(body, deps) {
 
 /* -------------------------------------------------------------------- main */
 
-const ACTIONS = { create, reshuffle, setcodes, names, reveal, wishlists, save, preview };
+const ACTIONS = { create, reshuffle, setcodes, current, names, reveal, wishlists, save, preview };
 
 async function handle(request, deps) {
   if (request.method !== "POST") return fail(405, "method");

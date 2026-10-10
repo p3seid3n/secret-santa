@@ -47,7 +47,13 @@
   <button class="btn tonal" id="make-codes" type="button" data-i18n="codes_make">Crear códigos para todos</button>
   <button class="btn text" id="clear-codes" type="button" data-i18n="codes_clear">Quitar todos</button>
 
-  <h2 id="h-draw" data-i18n="h_draw">3. Sorteo</h2>
+  <label class="check" for="open-address">
+    <input type="checkbox" id="open-address" checked>
+    <span data-i18n="host_open">Los invitados entran solo con la dirección del sitio</span>
+  </label>
+  <p class="hint" data-i18n="host_open_hint">Así no hace falta el enlace largo. Pero cualquiera que conozca la dirección podría entrar: pon códigos a casi todos.</p>
+
+  <h2 id="h-draw" data-i18n="h_draw">4. Sorteo</h2>
   <label for="host-password" data-i18n="host_password_label">Contraseña del organizador</label>
   <input id="host-password" type="password" autocomplete="current-password">
   <button class="btn" id="draw" type="button" data-i18n="draw_btn">Sortear y crear el enlace</button>

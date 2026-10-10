@@ -152,6 +152,31 @@ test("personal codes: format, hashing, setcodes and reshuffle", async () => {
   assert.strictEqual((await call(deps, { action: "reveal", id, index: 0 })).status, 200, "all codes can be removed");
 });
 
+test("open address: the plain site address opens the event only when the host allowed it", async () => {
+  const deps = makeDeps();
+  assert.strictEqual((await call(deps, { action: "current" })).status, 404, "nothing before any draw");
+  const closed = await createEvent(deps);
+  assert.strictEqual((await call(deps, { action: "current" })).status, 404, "closed by default");
+  const open = await createEvent(deps, { openAddress: true });
+  const res = await call(deps, { action: "current" });
+  assert.deepStrictEqual([res.status, res.body.id], [200, open]);
+  assert.deepStrictEqual(Object.keys(res.body).sort(), ["id", "ok"]);
+
+  // a later draw without the option closes it again
+  await createEvent(deps);
+  assert.strictEqual((await call(deps, { action: "current" })).status, 404);
+
+  // host can switch it on and off without drawing again
+  const wrong = await call(deps, { action: "setcodes", id: closed, password: "nope", openAddress: true });
+  assert.strictEqual(wrong.status, 401);
+  await call(deps, { action: "setcodes", id: closed, password: ENV.HOST_PASSWORD, openAddress: true });
+  assert.strictEqual((await call(deps, { action: "current" })).body.id, closed);
+  await call(deps, { action: "setcodes", id: open, password: ENV.HOST_PASSWORD, openAddress: false });
+  assert.strictEqual((await call(deps, { action: "current" })).body.id, closed, "switching off another event changes nothing");
+  await call(deps, { action: "setcodes", id: closed, password: ENV.HOST_PASSWORD, openAddress: false });
+  assert.strictEqual((await call(deps, { action: "current" })).status, 404);
+});
+
 test("only POST with a known action is accepted", async () => {
   const deps = makeDeps();
   assert.strictEqual((await call(deps, { action: "names" }, "GET")).status, 405);

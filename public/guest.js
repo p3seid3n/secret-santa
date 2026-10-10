@@ -426,16 +426,6 @@
     I18n.onChange(onLanguageChanged);
 
     eventId = readEventId();
-    if (!eventId) {
-      // Opened with just the website address: use the link used last time on this device, if any.
-      try { eventId = window.localStorage.getItem(LAST_KEY) || ""; } catch (e) { eventId = ""; }
-      if (!/^[A-Za-z0-9_-]{8,40}$/.test(eventId)) eventId = "";
-      usedStored = !!eventId;
-    }
-    if (!eventId) {
-      show("start");
-      return;
-    }
 
     $("name-form").addEventListener("submit", onNameSubmit);
     $("name-input").addEventListener("input", function () {
@@ -458,7 +448,30 @@
     $("retry").addEventListener("click", function () { if (retryAction) retryAction(); });
     window.addEventListener("pagehide", flushPendingNotes);
 
-    run(loadNames);
+    if (eventId) {
+      run(loadNames);
+    } else {
+      run(openWithoutLink);
+    }
+  }
+
+  // Opened with just the website address: the host may have allowed that (the server then
+  // knows the event). Otherwise use the link used last time on this device, if any.
+  function openWithoutLink() {
+    return Api.call("current", {}).then(function (answer) {
+      if (answer.ok) {
+        eventId = answer.id;
+        return loadNames();
+      }
+      var stored = "";
+      try { stored = window.localStorage.getItem(LAST_KEY) || ""; } catch (e) { stored = ""; }
+      if (/^[A-Za-z0-9_-]{8,40}$/.test(stored)) {
+        eventId = stored;
+        usedStored = true;
+        return loadNames();
+      }
+      show("start");
+    });
   }
 
   init();

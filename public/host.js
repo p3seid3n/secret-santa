@@ -14,7 +14,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // names: the text box content. rules: [{a, b, both}]. link: last link created.
-  var state = { names: "", rules: [], link: "", codes: {} };
+  var state = { names: "", rules: [], link: "", codes: {}, open: true, openServer: false };
 
   /* -------------------------------------------------------------- Storage */
 
@@ -29,6 +29,8 @@
           .map(function (r) { return { a: r.a, b: r.b, both: !!r.both }; });
       }
       if (typeof saved.link === "string") state.link = saved.link;
+      if (typeof saved.open === "boolean") state.open = saved.open;
+      if (typeof saved.openServer === "boolean") state.openServer = saved.openServer;
       if (saved.codes && typeof saved.codes === "object") {
         Object.keys(saved.codes).forEach(function (name) {
           if (typeof saved.codes[name] === "string") state.codes[name] = saved.codes[name];
@@ -192,9 +194,12 @@
 
     var button = $("update-codes");
     button.disabled = true;
-    Api.call("setcodes", { password: password, id: id, codes: currentCodes() }).then(function (answer) {
+    Api.call("setcodes", { password: password, id: id, codes: currentCodes(), openAddress: state.open }).then(function (answer) {
       button.disabled = false;
       if (!answer.ok) { showDrawError(message, answer); return; }
+      state.openServer = state.open;
+      saveState();
+      showLink(state.link);
       message.className = "msg ok";
       setMessage(message, "codes_saved");
     }, function () {
@@ -296,7 +301,14 @@
 
   /* --------------------------------------------------------------- 3. Draw */
 
+  // The link to send: just the site address when the server was told to allow that,
+  // otherwise the long personal link.
+  function shownLink(link) {
+    return state.openServer ? new URL("./", link).href : link;
+  }
+
   function showLink(link) {
+    link = shownLink(link);
     $("link-out").value = link;
     $("open-link").href = link;
     clearMessage($("copy-msg"));
@@ -377,7 +389,7 @@
     setMessage(message, "draw_working");
 
     // The draw happens on the server, so this page never sees who gives to whom.
-    Api.call("create", { password: password, names: names, rules: state.rules, codes: currentCodes() }).then(function (answer) {
+    Api.call("create", { password: password, names: names, rules: state.rules, codes: currentCodes(), openAddress: state.open }).then(function (answer) {
       button.disabled = false;
       if (!answer.ok) {
         showDrawError(message, answer);
@@ -389,6 +401,7 @@
       var link = new URL("index.html", window.location.href);
       link.hash = "e=" + answer.id;
       state.link = link.href;
+      state.openServer = state.open;
       saveState();
       showLink(state.link);
     }, function () {
@@ -448,7 +461,8 @@
 
   function onReset() {
     if (!window.confirm(t("reset_confirm"))) return;
-    state = { names: "", rules: [], link: "", codes: {} };
+    state = { names: "", rules: [], link: "", codes: {}, open: true, openServer: false };
+    $("open-address").checked = true;
     saveState();
     $("names").value = "";
     $("result").hidden = true;
@@ -479,6 +493,11 @@
     $("copy-link").addEventListener("click", onCopyLink);
     $("link-out").addEventListener("focus", function () { this.select(); });
     $("reshuffle").addEventListener("click", onReshuffle);
+    $("open-address").checked = state.open;
+    $("open-address").addEventListener("change", function () {
+      state.open = $("open-address").checked;
+      saveState();
+    });
     $("make-codes").addEventListener("click", onMakeCodes);
     $("clear-codes").addEventListener("click", onClearCodes);
     $("update-codes").addEventListener("click", onUpdateCodes);
